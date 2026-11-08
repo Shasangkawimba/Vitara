@@ -1,0 +1,18 @@
+{
+  "name": "vitara-server",
+  "version": "0.1.0",
+  "description": "Backend VITARA - Aplikasi Kesehatan Kerja",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test:llm": "node src/scripts/testLlm.js"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/google-genai": "^0.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
