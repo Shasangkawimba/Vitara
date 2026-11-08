@@ -13,7 +13,7 @@ Asisten kesehatan kerja berbasis AI untuk pekerja informal dan gig economy Indon
 ## Tech Stack
 Frontend: React 18, Vite, Tailwind CSS, Recharts, React-Leaflet.
 Backend: Express.js, Prisma ORM, PostgreSQL.
-AI: LangChain.js, Gemini 2.0 Flash (Primary), Groq (Fallback).
+AI: LangChain.js, Gemini 3.8 Flash (Primary), Groq (Fallback).
 
 ## Cara Menjalankan (Lokal)
     1. npm install (di root, client, dan server)
@@ -22,7 +22,7 @@ AI: LangChain.js, Gemini 2.0 Flash (Primary), Groq (Fallback).
     4. npm run dev
 
 ## Dokumentasi Wajib
-- `AGENTS_GLOBAL.md` (Aturan mutlak AI Agent)
+- `AGENTS.md` (Aturan mutlak AI Agent)
 - `API_CONTRACT.md` (Kontrak Endpoint API)
 - `CONTRIBUTING.md` (Alur kerja & Standar Kode)
 - `GITFLOW.md` (Aturan Git)

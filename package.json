@@ -1,0 +1,13 @@
+{
+  "name": "vitara",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VITARA — Asisten kesehatan kerja berbasis AI untuk pekerja informal & gig economy Indonesia",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
