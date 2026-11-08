@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Environment & secret (JANGAN commit API key)
+.env
+.env.local
+
+# Log & OS
+*.log
+.DS_Store
+Thumbs.db
