@@ -1,0 +1,39 @@
+// Prisma Schema untuk VITARA (Virtual Assistant for Tracking and Recovery)
+// Dikelola secara mutlak oleh P1 (Auth & Work-Health Logger)
+// Sesuai dengan spesifikasi AGENTS.md dan P1_PRIVATE.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Model Pengguna (User)
+// Menyimpan kredensial autentikasi dan profil dasar pekerja
+model User {
+  id         String    @id @default(cuid())
+  phone      String    @unique
+  password   String
+  name       String
+  occupation String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  workLogs   WorkLog[]
+}
+
+// Model Pencatatan Kerja & Kesehatan (WorkLog)
+// Menyimpan log harian terkait jam kerja, pendapatan, dan keluhan fisik
+model WorkLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workHours Int
+  income    Int?
+  symptoms  String[] // Array keluhan fisik (contoh: ["pegal linu", "sakit pinggang"])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
