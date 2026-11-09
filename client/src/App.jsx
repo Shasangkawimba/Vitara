@@ -9,6 +9,7 @@ import React from "react";
 import { Routes, Route, Navigate, Link } from "react-router-dom";
 import Layout from "./components/Layout";
 import DashboardPage from "./pages/Dashboard";
+import ReminderPage from "./pages/Reminder";
 
 /**
  * Komponen Placeholder Standar
@@ -154,16 +155,7 @@ function App() {
         />
 
         {/* Rute Pengingat (Reminder) — Tanggung Jawab P4 */}
-        <Route
-          path="/reminder"
-          element={
-            <PlaceholderPage
-              nama="Pengingat Istirahat & Hidrasi"
-              pemilik="P4 (Reminder)"
-              deskripsi="Notifikasi berkala pengingat waktu istirahat dan peregangan fisik gig worker."
-            />
-          }
-        />
+        <Route path="/reminder" element={<ReminderPage />} />
 
         {/* Catch-all 404 di dalam layout */}
         <Route path="*" element={<NotFoundPage />} />
