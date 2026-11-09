@@ -18,6 +18,10 @@ app.use(express.json());
 const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);
 
+// Routes milik P4 (Utility: Finder & Pharmacy)
+const pharmacyRoutes = require("./routes/pharmacy");
+app.use("/api/pharmacy", pharmacyRoutes);
+
 // 404 → format standar sesuai API_CONTRACT.md
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: "Endpoint tidak ditemukan." });
