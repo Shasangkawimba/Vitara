@@ -1,21 +1,18 @@
 // ============================================================
 // routes/ai.js — Milik P2 (Ergo-Coach AI)
 // Endpoint resmi AI Engine sesuai API_CONTRACT.md:
-//   POST /api/ai/coach  → konsultasi keluhan (Minggu 2)
-//   GET  /api/ai/status → cek kesiapan layanan AI
-//
-// Endpoint /test-llm (khusus Minggu 1) sudah dihapus.
+//   POST /api/ai/coach        → konsultasi keluhan (Minggu 2)
+//   GET  /api/ai/risk-score   → skor risiko kelelahan 0-100 (Minggu 3)
+//   GET  /api/ai/weekly-insight → ringkasan evaluasi mingguan (Minggu 4)
+//   GET  /api/ai/status       → cek kesiapan layanan AI
 // ============================================================
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
 const { authenticateToken } = require("../middlewares/authMiddleware");
-const { analyzeComplaint, MODEL_NAME, DISCLAIMER } = require("../services/aiService");
+const { analyzeComplaint, hitungSkorRisiko, buatInsightMingguan, MODEL_NAME, DISCLAIMER } = require("../services/aiService");
 
 const router = express.Router();
-
-// Jumlah log yang dianalisis: 7 hari terakhir (P2_PRIVATE.md).
-const JUMLAH_LOG_MAKS = 7;
 
 // Skema validasi input keluhan.
 // `pesan` adalah field resmi; `message`/`keluhan` diterima sebagai alias
@@ -29,25 +26,28 @@ const coachSchema = z.object({
 });
 
 /**
- * Ambil maksimal 7 WorkLog milik user dari 7 hari terakhir.
+ * Ambil WorkLog milik user dari rentang hari terakhir.
  * Kegagalan database TIDAK boleh menggagalkan konsultasi AI — bila gagal,
  * kita lanjut dengan array kosong (mode Konservatif) sambil mencatat warning.
  *
- * @param {string} userId
+ * @param {Object} params
+ * @param {string} params.userId
+ * @param {number} [params.hari=7]  Cakupan hari ke belakang.
+ * @param {number} [params.maks=7]  Batas jumlah baris yang diambil.
  * @returns {Promise<{ logs: Array, dbError: string|null }>}
  */
-async function ambilWorkLogTerakhir(userId) {
+async function ambilWorkLog({ userId, hari = 7, maks = 7 }) {
   try {
-    const batasTujuhHari = new Date();
-    batasTujuhHari.setDate(batasTujuhHari.getDate() - 7);
+    const batasWaktu = new Date();
+    batasWaktu.setDate(batasWaktu.getDate() - hari);
 
     const logs = await prisma.workLog.findMany({
       where: {
         userId,
-        createdAt: { gte: batasTujuhHari },
+        createdAt: { gte: batasWaktu },
       },
       orderBy: { createdAt: "desc" },
-      take: JUMLAH_LOG_MAKS,
+      take: maks,
       select: {
         id: true,
         workHours: true,
@@ -63,6 +63,12 @@ async function ambilWorkLogTerakhir(userId) {
     return { logs: [], dbError: err?.message || "Gagal mengambil histori log." };
   }
 }
+
+/** WorkLog 7 hari terakhir untuk /coach dan /risk-score. */
+const ambilWorkLogTerakhir = (userId) => ambilWorkLog({ userId, hari: 7, maks: 7 });
+
+/** WorkLog 14 hari terakhir untuk /weekly-insight (dibandingkan 7 vs 7). */
+const ambilWorkLogDuaMinggu = (userId) => ambilWorkLog({ userId, hari: 14, maks: 60 });
 
 /**
  * Simpan hasil konsultasi ke tabel AiInteraction.
@@ -172,6 +178,60 @@ router.post("/coach", authenticateToken, async (req, res) => {
       tersimpan: simpan.saved,
       peringatanSistem: dbError
         ? "Histori log gagal dibaca, analisis memakai mode Konservatif."
+        : undefined,
+    },
+  });
+});
+
+// GET /api/ai/risk-score → skor risiko kelelahan 0-100 (deterministik, tanpa LLM)
+router.get("/risk-score", authenticateToken, async (req, res) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: "Sesi tidak valid. Silakan login ulang.",
+    });
+  }
+
+  // WorkLog 7 hari terakhir; kegagalan DB → skor tetap dibalas (null) + pesan sistem
+  const { logs, dbError } = await ambilWorkLogTerakhir(userId);
+  const hasil = hitungSkorRisiko(logs);
+
+  return res.json({
+    success: true,
+    data: {
+      ...hasil,
+      periode: { hari: 7, cakupan: "7 hari terakhir" },
+      disclaimer: DISCLAIMER,
+      peringatanSistem: dbError
+        ? "Histori log gagal dibaca, skor dihitung tanpa data."
+        : undefined,
+    },
+  });
+});
+
+// GET /api/ai/weekly-insight → ringkasan evaluasi 14 hari (deterministik, tanpa LLM)
+router.get("/weekly-insight", authenticateToken, async (req, res) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: "Sesi tidak valid. Silakan login ulang.",
+    });
+  }
+
+  const { logs, dbError } = await ambilWorkLogDuaMinggu(userId);
+  const hasil = buatInsightMingguan(logs);
+
+  return res.json({
+    success: true,
+    data: {
+      ...hasil,
+      periode: { hari: 14, cakupan: "14 hari terakhir" },
+      peringatanSistem: dbError
+        ? "Histori log gagal dibaca, ringkasan ditampilkan tanpa data."
         : undefined,
     },
   });

@@ -339,6 +339,320 @@ async function analyzeComplaint({ userMessage, logs = [], userName }) {
   };
 }
 
+// ============================================================
+// API RISK SCORE (Minggu 3) — skor risiko kelelahan 0-100.
+// Deterministik (tanpa LLM) agar respons cepat & gratis.
+// Skala jam kerja lebih dari 8 jam + frekuensi keluhan.
+// ============================================================
+
+/** Batasi angka ke rentang [min, max]. */
+function clampRange(nilai, min = 0, max = 1) {
+  return Math.min(Math.max(nilai, min), max);
+}
+
+/**
+ * Kunci tanggal lokal (YYYY-MM-DD) untuk deduplikasi log per hari.
+ * Satu hari boleh punya lebih dari satu log (jam subnet).
+ * @param {Date|string|number} tanggal
+ */
+function kunciHari(tanggal) {
+  const d = new Date(tanggal);
+  const bulan = String(d.getMonth() + 1).padStart(2, "0");
+  const hari = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${bulan}-${hari}`;
+}
+
+/**
+ * Nama hari lokal untuk kalimat insight (Senin, dst).
+ * @param {Date|string|number} tanggal
+ */
+function namaHari(tanggal) {
+  return new Date(tanggal).toLocaleDateString("id-ID", { weekday: "long" });
+}
+
+/**
+ * Hitung skor risiko kelelahan harian dari daftar WorkLog.
+ *
+ * Komponen skor (total 100):
+ *   1. Beban jam kerja     — maks 40 poin (rata-rata 3 hari terbaru, 6-13 jam)
+ *   2. Keluhan fisik       — maks 30 poin (keluhan unik, yang baru x1,5)
+ *   3. Tanpa hari libur    — maks 15 poin (hari kerja berturut-turut > 0 jam)
+ *   4. Fluktuasi jam kerja — maks 15 poin (koefisien variasi)
+ *
+ * @param {Array}  logs  WorkLog terbaru dulu (orderBy createdAt desc).
+ * @returns {Object} Skor + rincian komponen + mode cold start.
+ */
+function hitungSkorRisiko(logs = []) {
+  const logData = [...logs];
+  if (!logData.length) {
+    return {
+      skor: null,
+      level: null,
+      kepercayaan: null,
+      mode: "KONSERVATIF",
+      modeLabel: "Konservatif",
+      jumlahLog: 0,
+      komponen: [],
+      pesan:
+        "Belum ada log kerja untuk dianalisis. Catat aktivitas harian Anda agar skor risiko bisa dihitung.",
+    };
+  }
+
+  // Rain manusia: kunci Hari -> { jam, keluhan } (riwayat diurutkan dari terbaru ke terlama)
+  const sesuaiHari = new Map(); // Kunci Hari -> { jam, keluhan } gabungan
+  for (const log of logData) {
+    const key = kunciHari(log.createdAt);
+    const entri = sesuaiHari.get(key) || { tanggal: log.createdAt, jam: 0, keluhan: [] };
+    entri.jam += Number(log.workHours) || 0;
+    entri.keluhan.push(...(Array.isArray(log.symptoms) ? log.symptoms : []));
+    sesuaiHari.set(key, entri);
+  }
+  const hariList = [...sesuaiHari.values()]; // Terbaru dulu
+  const jamList = logData.map((log) => Number(log.workHours) || 0); // Terbaru dulu
+
+  // Ukuran dasar
+  const rataRata = jamList.reduce((a, b) => a + b, 0) / jamList.length;
+  const tigaHariTerbaru = jamList.slice(0, Math.min(3, jamList.length));
+  const rataTigaHari = tigaHariTerbaru.reduce((a, b) => a + b, 0) / tigaHariTerbaru.length;
+  const varian = jamList.reduce((a, b) => a + (b - rataRata) ** 2, 0) / jamList.length;
+  const deviasi = Math.sqrt(varian);
+  const koefisienVariasi = rataRata > 0 ? deviasi / rataRata : 0;
+
+  // === 1. Beban jam kerja (maks 40) ===
+  // 6 jam dianggap titik aman; 13 jam ke atas dianggap ekstrem.
+  const poinJam = clampRange((rataTigaHari - 6) / (13 - 6)) * 40;
+  const komponenJam = {
+    nama: "Beban Jam Kerja",
+    poin: Math.round(poinJam),
+    maks: 40,
+    bobot: "40%",
+    detail: `Rata-rata ${tigaHariTerbaru.length} hari terakhir: ${rataTigaHari.toFixed(1)} jam/hari (rata-rata 7 hari: ${rataRata.toFixed(1)} jam).`,
+  };
+
+  // === 2. Keluhan fisik (maks 30) ===
+  // Keluhan pada log TERBARU membobot 1.5x karena paling merefleksikan kondisi sekarang.
+  const keluhanTerbaru = new Set(hariList[0].keluhan || []); // Hari ini
+  const hitungKeluhan = new Map();
+  for (const { keluhan } of hariList) {
+    for (const k of keluhan) {
+      const bersih = String(k).trim().toLowerCase();
+      if (bersih && !(bersih.includes("bebas"))) {
+        // Abaikan label "Bebas Keluhan & Bugar" dari P1
+        hitungKeluhan.set(bersih, (hitungKeluhan.get(bersih) || 0) + 1);
+      }
+    }
+  }
+  let poinKeluhan = 0;
+  for (const [k, jumlah] of hitungKeluhan) {
+    let basis = Math.min(8, 6 + (jumlah - 1) * 3); // 6 poin pertama, +3 per pengulangan, maks 8
+    if (keluhanTerbaru.has(k)) basis *= 1.5;
+    poinKeluhan += basis;
+  }
+  const komponenKeluhan = {
+    nama: "Keluhan Fisik",
+    poin: Math.round(clampRange(poinKeluhan / 30) * 30),
+    maks: 30,
+    bobot: "30%",
+    detail: hitungKeluhan.size
+      ? `${hitungKeluhan.size} jenis keluhan tercatat${[...keluhanTerbaru].length ? ", beberapa masih dirasakan hari ini" : ""}.`
+      : "Tidak ada keluhan fisik yang dicatat.",
+  };
+
+  // === 3. Tanpa hari libur (maks 15) ===
+  // Hari kerja berturut-turut tanpa hari 0 jam menandakan pemulihan kurang.
+  let hariKerjaBerturut = 0;
+  for (const hari of hariList) {
+    if (hari.jam > 0) hariKerjaBerturut++;
+    else break;
+  }
+  const poinLibur = clampRange(hariKerjaBerturut / 6) * 15;
+  const komponenLibur = {
+    nama: "Tanpa Hari Libur",
+    poin: Math.round(poinLibur),
+    maks: 15,
+    bobot: "15%",
+    detail: hariKerjaBerturut >= 5
+      ? `Anda bekerja ${hariKerjaBerturut} hari berturut-turut tanpa hari bebas.`
+      : `${hariKerjaBerturut} hari kerja berturut-turut.`,
+  };
+
+  // === 4. Fluktuasi jam kerja (maks 15) ===
+  const poinFluktuasi = clampRange(koefisienVariasi / 0.6) * 15;
+  const komponenFluktuasi = {
+    nama: "Fluktuasi Jam Kerja",
+    poin: Math.round(poinFluktuasi),
+    maks: 15,
+    bobot: "15%",
+    detail: `${klasifikasiFluktuasi(koefisienVariasi)} (deviasi ${deviasi.toFixed(1)} jam dari rata-rata).`,
+  };
+
+  const komponen = [komponenJam, komponenKeluhan, komponenLibur, komponenFluktuasi];
+  const skor = Math.min(100, Math.round(komponen.reduce((a, k) => a + k.poin, 0)));
+
+  // Level harus sinkron dengan widget Dashboard P3 (AiInsightWidget):
+  // >= 70 Tinggi, >= 40 Sedang, selainnya Rendah.
+  const level = skor >= 70 ? "Risiko Tinggi" : skor >= 40 ? "Risiko Sedang" : "Risiko Rendah";
+
+  const mode = determineMode(logData.length);
+  const kepercayaan =
+    logData.length >= 7 ? "tinggi" : logData.length >= 3 ? "sedang" : "rendah";
+
+  return {
+    skor,
+    level,
+    kepercayaan,
+    mode: mode.mode,
+    modeLabel: mode.label,
+    jumlahLog: logData.length,
+    komponen,
+    saran: buatSaranRisiko(komponen, skor),
+  };
+}
+
+function klasifikasiFluktuasi(cv) {
+  if (cv >= 0.45) return "Jam kerja sangat tidak konsisten (lonjakan beban)";
+  if (cv >= 0.25) return "Jam kerja cukup bervariasi";
+  return "Jam kerja cukup konsisten";
+}
+
+/**
+ * Saran risiko dari komponen berbobot terbesar.
+ */
+function buatSaranRisiko(komponen, skor) {
+  const dominan = [...komponen].sort((a, b) => b.poin / b.maks - a.poin / a.maks)[0];
+  if (skor >= 70) {
+    return `Risiko tinggi didominasi faktor "${dominan.nama}". Sebaiknya kurangi durasi kerja hari ini atau ambil hari libur bila memungkinkan, lalu konsultasikan keluhan ke Ergo-Coach AI.`;
+  }
+  if (skor >= 40) {
+    return `Perhatikan faktor "${dominan.nama}". Lakukan peregangan terjadwal setiap 2 jam kerja, perhatikan hidrasi, dan pastikan satu hari bebas dalam sepekan.`;
+  }
+  return `Kondisi masih terkendali. Faktor terbesar saat ini "${dominan.nama}" — pertahankan pola istirahat dan tetap catat log harian.`;
+}
+
+// ============================================================
+// API WEEKLY INSIGHT (Minggu 4) — ringkasan evaluasi mingguan.
+// Deterministik (tanpa LLM) karena widget Dashboard dimuat
+// tiap kali halaman dibuka — tidak boleh membebani Gemini.
+// ============================================================
+
+/**
+ * Buat ringkasan mingguan dari WorkLog 14 hari terakhir.
+ * Membandingkan 7 hari terakhir vs 7 hari sebelumnya.
+ *
+ * @param {Array} logs WorkLog terbaru dulu (maks 14).
+ * @returns {Object} { ringkasan, data, disclaimer }
+ */
+function buatInsightMingguan(logs = []) {
+  if (!logs.length) {
+    return {
+      ringkasan:
+        "Belum ada data log untuk dianalisis. Mulai catat jam kerja dan keluhan Anda setiap hari untuk mendapatkan evaluasi mingguan.",
+      data: null,
+      disclaimer: DISCLAIMER,
+    };
+  }
+
+  const batasKemarin = new Date();
+  batasKemarin.setHours(0, 0, 0, 0);
+  batasKemarin.setDate(batasKemarin.getDate() - 7);
+
+  const mingguIni = [];
+  const mingguLalu = [];
+  for (const log of logs) {
+    const created = new Date(log.createdAt);
+    (created >= batasKemarin ? mingguIni : mingguLalu).push(log);
+  }
+
+  const totalMingguIni = mingguIni.reduce((a, l) => a + (Number(l.workHours) || 0), 0);
+  const totalMingguLalu = mingguLalu.reduce((a, l) => a + (Number(l.workHours) || 0), 0);
+  const hariAktifIni = mingguIni.length || 0;
+  const rataIni = hariAktifIni ? totalMingguIni / hariAktifIni : 0;
+  const rataLalu = mingguLalu.length ? totalMingguLalu / mingguLalu.length : 0;
+
+  // Hari puncak beban dalam 14 hari
+  const sesuaiHari = new Map();
+  for (const log of logs) {
+    const key = kunciHari(log.createdAt);
+    const entri = sesuaiHari.get(key) || { tanggal: log.createdAt, jam: 0, keluhan: [] };
+    entri.jam += Number(log.workHours) || 0;
+    entri.keluhan.push(...(Array.isArray(log.symptoms) ? log.symptoms : []));
+    sesuaiHari.set(key, entri);
+  }
+  const hariAll = [...sesuaiHari.values()];
+  const puncak = [...hariAll].sort((a, b) => b.jam - a.jam)[0];
+
+  // Keluhan & korelasi jam vs keluhan
+  const hitungKeluhan = new Map();
+  for (const { keluhan } of hariAll) {
+    for (const k of keluhan) {
+      const bersih = String(k).trim().toLowerCase();
+      if (bersih && !bersih.includes("bebas")) {
+        hitungKeluhan.set(bersih, (hitungKeluhan.get(bersih) || 0) + 1);
+      }
+    }
+  }
+  const keluhanFavorit = [...hitungKeluhan.entries()].sort((a, b) => b[1] - a[1])[0] || null;
+
+  // Hari dengan keluhan nyata vs hari bebas keluhan (label "Bebas ..." dianggap sehat)
+  const punyaKeluhanAsli = (keluhan) =>
+    keluhan.some((k) => {
+      const bersih = String(k).trim().toLowerCase();
+      return bersih && !bersih.includes("bebas");
+    });
+  const denganKeluhan = hariAll.filter((h) => punyaKeluhanAsli(h.keluhan));
+  const tanpaKeluhan = hariAll.filter((h) => !punyaKeluhanAsli(h.keluhan));
+  const rataDenganKeluhan = denganKeluhan.length ? denganKeluhan.reduce((a, h) => a + h.jam, 0) / denganKeluhan.length : null;
+  const rataTanpaKeluhan = tanpaKeluhan.length ? tanpaKeluhan.reduce((a, h) => a + h.jam, 0) / tanpaKeluhan.length : null;
+
+  // Tren minggu ini vs minggu lalu
+  let arah = "stabil";
+  let selisihPersen = 0;
+  if (rataLalu > 0 && rataIni > 0) {
+    selisihPersen = Math.round(((rataIni - rataLalu) / rataLalu) * 100);
+    if (selisihPersen >= 15) arah = "naik";
+    else if (selisihPersen <= -15) arah = "turun";
+  }
+
+  const hariPuncakText = `${namaHari(puncak.tanggal)} (${puncak.jam} jam)`;
+  const kalimKorelasi =
+    rataDenganKeluhan !== null && rataTanpaKeluhan !== null && rataTanpaKeluhan > 0
+      ? rataDenganKeluhan > rataTanpaKeluhan
+        ? `Hari yang Anda bekerja lebih lama cenderung berakhir dengan keluhan (rata-rata ${rataDenganKeluhan.toFixed(1)} jam vs ${rataTanpaKeluhan.toFixed(1)} jam pada hari tanpa keluhan) — indikasi korelasi beban-kelelahan.`
+        : `Keluhan muncul meski rata-rata jam kerja Anda tidak lebih panjang (${rataDenganKeluhan.toFixed(1)} vs ${rataTanpaKeluhan.toFixed(1)} jam) — periksa postur dan kelengkapan alat perlindungan diri.`
+      : "";
+
+  const ringkasan = [
+    `Dalam 14 hari terakhir Anda mencatat ${hariAll.length} hari kerja (total ${totalMingguIni + totalMingguLalu} jam, rata-rata ${rataIni.toFixed(1)} jam/hari ini).`,
+    `Beban tertinggi jatuh pada ${hariPuncakText}${keluhanFavorit ? `, dan keluhan paling sering muncul adalah "${keluhanFavorit[0]}" (${keluhanFavorit[1]} kali)` : ""}.`,
+    kalimKorelasi,
+    selisihPersen !== 0 && totalMingguLalu > 0
+      ? `Rata-rata jam kerja minggu ini ${arah} ${Math.abs(selisihPersen)}% dibanding minggu sebelumnya.`
+      : "",
+    arah === "naik" || (rataIni >= 9)
+      ? "Jika pola ini berlanjut, pertimbangkan menambah jeda 10 menit setiap 3 jam berkendara dan jaga posisi duduk ergonomis."
+      : "Pertahankan pola ini, tetap catat log harian agar analisis makin akurat.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    ringkasan,
+    data: {
+      totalJam14Hari: totalMingguIni + totalMingguLalu,
+      totalJam: totalMingguIni,
+      rataRataJamHari: Number(rataIni.toFixed(1)),
+      rataRataJamHariLalu: Number(rataLalu.toFixed(1)),
+      hariPuncak: { hari: namaHari(puncak.tanggal), jam: puncak.jam },
+      keluhanUtama: keluhanFavorit
+        ? { nama: keluhanFavorit[0], jumlah: keluhanFavorit[1] }
+        : null,
+      tren: { arah, persen: selisihPersen },
+      jumlahHariData: hariAll.length,
+    },
+    disclaimer: DISCLAIMER,
+  };
+}
+
 module.exports = {
   llm,
   invokeLLM,
@@ -347,6 +661,8 @@ module.exports = {
   determineMode,
   parseAIResponse,
   buildPrompt,
+  hitungSkorRisiko,
+  buatInsightMingguan,
   MODEL_NAME,
   DISCLAIMER,
   EMERGENCY_KEYWORDS,

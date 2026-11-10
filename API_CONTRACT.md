@@ -22,6 +22,17 @@ Error: `{ "success": false, "error": "Pesan" }`
 | GET | `/api/ai/risk-score` | Skor risiko harian (0-100) |
 | GET | `/api/ai/weekly-insight` | Ringkasan mingguan |
 
+Detail respons (Minggu 2-4, semuanya `{ success: true, data: {...} }`):
+
+- **POST `/api/ai/coach`** — body: `{ pesan: string (3-1000 karakter) }` (alias `message`/`keluhan` diterima).
+  `data`: `{ analisis, rencana_pemulihan: [{judul, detail}], saran_otc: [{nama, detail}], peringatan, disclaimer, isEmergency, mode, modeLabel, logCount, interaksiId, tersimpan }`.
+  Keyword darurat ("nyeri dada", "sesak napas", "pingsan") → `isEmergency: true`, tidak memanggil LLM.
+- **GET `/api/ai/risk-score`** (deterministik, tanpa LLM) — `data`:
+  `{ skor: number|null, level: "Risiko Tinggi"|"Risiko Sedang"|"Risiko Rendah"|null, kepercayaan: "tinggi"|"sedang"|"rendah"|null, mode, modeLabel, jumlahLog, komponen: [{nama, poin, maks, bobot, detail}], saran, periode, disclaimer }`.
+  Ambang level (sinkron widget Dashboard P3): skor >= 70 Tinggi, >= 40 Sedang. `skor: null` saat belum ada log.
+- **GET `/api/ai/weekly-insight`** (deterministik, tanpa LLM) — `data`:
+  `{ ringkasan: string (siap ditampilkan), data: { totalJam14Hari, totalJam, rataRataJamHari, rataRataJamHariLalu, hariPuncak: {hari, jam}, keluhanUtama: {nama, jumlah}|null, tren: {arah: "naik"|"turun"|"stabil", persen}, jumlahHariData }, disclaimer }`.
+
 ## 3. Dashboard (Pemilik: P3)
 | Method | Endpoint | Deskripsi |
 |--------|----------|-----------|
