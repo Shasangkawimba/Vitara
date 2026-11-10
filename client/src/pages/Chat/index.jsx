@@ -10,6 +10,8 @@ import api from "../../services/api";
 import AiResponseCard from "./components/AiResponseCard";
 import MessageBubble from "./components/MessageBubble";
 import Composer from "./components/Composer";
+import EmergencyBanner from "./components/EmergencyBanner";
+import deteksiDarurat from "./emergency";
 
 // Chip saran cepat, diambil dari desain Stitch.
 const SARAN_CEPAT = [
@@ -51,6 +53,9 @@ const ChatPage = () => {
   const [daftarPesan, setDaftarPesan] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Peringatan darurat aktif: { keywords: string[] } — dari server (final)
+  // atau dipercepat client-side saat user mengetik red flag.
+  const [peringatanDarurat, setPeringatanDarurat] = useState(null);
 
   const bawahRef = useRef(null);
 
@@ -74,6 +79,13 @@ const ChatPage = () => {
       { id: `user-${Date.now()}`, tipe: "user", teks, waktu: formatWaktu() },
     ]);
     setLoading(true);
+
+    // 1. Deteksi lokal: banner 119 tampil SECEPAT mungkin tanpa menunggu server.
+    //    Keputusan final tetap dari server (isEmergency di respons /coach).
+    const keywordLokal = deteksiDarurat(teks);
+    if (keywordLokal.length > 0) {
+      setPeringatanDarurat({ keywords: keywordLokal });
+    }
 
     try {
       // Timeout per-request lebih panjang: Gemini bisa butuh >15 detik
@@ -100,6 +112,11 @@ const ChatPage = () => {
           waktu: formatWaktu(),
         },
       ]);
+
+      // 2. Verifikasi server: pastikan banner mengikuti verdict resmi AI.
+      if (data.isEmergency) {
+        setPeringatanDarurat({ keywords: data.matchedKeywords || [] });
+      }
     } catch (err) {
       const pesanError =
         err?.response?.data?.error ||
@@ -227,8 +244,16 @@ const ChatPage = () => {
         </div>
       )}
 
-      {/* Composer */}
+      {/* Composer + banner darurat */}
       <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-surface/95 backdrop-blur-md border-t border-border-subtle">
+        {peringatanDarurat && (
+          <div className="mb-3">
+            <EmergencyBanner
+              keywords={peringatanDarurat.keywords}
+              onDismiss={() => setPeringatanDarurat(null)}
+            />
+          </div>
+        )}
         <Composer
           nilai={pesan}
           onChange={setPesan}
