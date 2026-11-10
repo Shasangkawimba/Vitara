@@ -6,14 +6,19 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "test:auth": "node src/scripts/testAuth.js",
     "test:llm": "node src/scripts/testLlm.js"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
     "@langchain/google-genai": "^0.2.0",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "prisma": "^6.19.3",
     "zod": "^3.23.8"
   }
 }
