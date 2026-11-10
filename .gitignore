@@ -5,6 +5,7 @@ dist/
 # Environment & secret (JANGAN commit API key)
 .env
 .env.local
+.agents/
 
 # Log & OS
 *.log

@@ -57,6 +57,16 @@ const aiRoutes = require("./routes/ai");
 app.use("/api/ai", aiRoutes);
 app.use("/ai", aiRoutes);
 
+// Routes milik P3 (Dashboard & Analytics)
+const dashboardRoutes = require("./routes/dashboard");
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/dashboard", dashboardRoutes);
+
+// Routes milik P4 (Utility: Finder & Pharmacy)
+const pharmacyRoutes = require("./routes/pharmacy");
+app.use("/api/pharmacy", pharmacyRoutes);
+app.use("/pharmacy", pharmacyRoutes);
+
 // 404 → format standar sesuai API_CONTRACT.md dengan info URL detail
 app.use((req, res) => {
   res.status(404).json({
