@@ -72,7 +72,7 @@ async function runTests() {
 
   assert(decoded.id === "user_123" && decoded.name === "Budi", "JWT token berhasil ditandatangani dan diverifikasi");
 
-  // 4. Uji Validasi WorkLog Zod
+  // 4. Uji Validasi WorkLog Create Zod
   const logSchema = z.object({
     workHours: z.number().int().min(1).max(24),
     income: z.number().int().nonnegative().nullable().optional(),
@@ -82,7 +82,7 @@ async function runTests() {
   const validLog = logSchema.safeParse({
     workHours: 8,
     income: 250000,
-    symptoms: ["Sakit Pinggang", "Bahu Kaku"],
+    symptoms: ["Sakit Pinggang", "Leher & Bahu"],
   });
   assert(validLog.success === true, "Validasi catatan kerja normal (8 jam, Rp 250.000)");
 
@@ -98,9 +98,26 @@ async function runTests() {
   });
   assert(negativeIncome.success === false, "Penolakan jika pendapatan bernilai negatif");
 
+  // 5. Uji Validasi WorkLog Update (PUT) Zod
+  const updateLogSchema = z.object({
+    workHours: z.number().int().min(1).max(24).optional(),
+    income: z.number().int().nonnegative().nullable().optional(),
+    symptoms: z.array(z.string()).optional(),
+  });
+
+  const validPartialUpdate = updateLogSchema.safeParse({
+    workHours: 10,
+  });
+  assert(validPartialUpdate.success === true, "Validasi pembaruan parsial (hanya jam kerja)");
+
+  const invalidUpdateHours = updateLogSchema.safeParse({
+    workHours: 0, // Kurang dari 1
+  });
+  assert(invalidUpdateHours.success === false, "Penolakan pembaruan jika jam kerja bernilai 0");
+
   console.log(`\n=== Hasil Pengujian: ${passedCount}/${totalTests} Uji Berhasil ===`);
   if (passedCount === totalTests) {
-    console.log("🎉 Semua logika bisnis dan validasi P1 berfungsi sempurna!");
+    console.log("🎉 Semua logika bisnis dan validasi P1 (Auth & CRUD Logs) berfungsi sempurna!");
   }
 }
 
@@ -108,4 +125,3 @@ runTests().catch((err) => {
   console.error("Terjadi kesalahan:", err);
   process.exit(1);
 });
-

@@ -7,7 +7,11 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test:auth": "node src/scripts/testAuth.js",
-    "test:llm": "node src/scripts/testLlm.js"
+    "test:llm": "node src/scripts/testLlm.js",
+    "test:db": "node src/scripts/testNeonDb.js",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",

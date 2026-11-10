@@ -1,6 +1,6 @@
 // ============================================================
 // server/src/routes/logs.js
-// Router API Pencatatan Jam Kerja & Kesehatan (WorkLog).
+// Router API CRUD Pencatatan Jam Kerja & Kesehatan (WorkLog).
 // Sesuai dengan spesifikasi API_CONTRACT.md & standar AGENTS.md.
 // Dikelola oleh P1 (Auth & Logger).
 // ============================================================
@@ -33,6 +33,25 @@ const createLogSchema = z.object({
     .default([]),
 });
 
+// Skema Validasi Pembaruan Log (semua field opsional tapi jika ada harus valid)
+const updateLogSchema = z.object({
+  workHours: z
+    .number()
+    .int("Durasi jam kerja harus berupa bilangan bulat.")
+    .min(1, "Durasi jam kerja minimal 1 jam.")
+    .max(24, "Durasi jam kerja maksimal 24 jam sehari.")
+    .optional(),
+  income: z
+    .number()
+    .int("Penghasilan harus berupa bilangan bulat.")
+    .nonnegative("Penghasilan tidak boleh bernilai negatif.")
+    .nullable()
+    .optional(),
+  symptoms: z
+    .array(z.string().trim().min(1, "Keluhan tidak boleh kosong."))
+    .optional(),
+});
+
 /**
  * GET /api/logs
  * Mengambil daftar seluruh riwayat log milik user yang sedang login
@@ -53,12 +72,55 @@ router.get("/", async (req, res) => {
 });
 
 /**
+ * GET /api/logs/latest
+ * Mengambil satu log terakhir untuk preview kartu Quick Log
+ */
+router.get("/latest", async (req, res) => {
+  try {
+    const latestLog = await logService.getLatestLog(req.user.id);
+    return res.status(200).json({
+      success: true,
+      data: latestLog,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Gagal mengambil log terakhir.",
+    });
+  }
+});
+
+/**
+ * GET /api/logs/:id
+ * Mengambil satu log spesifik berdasarkan ID
+ */
+router.get("/:id", async (req, res) => {
+  try {
+    const log = await logService.getLogById(req.user.id, req.params.id);
+    if (!log) {
+      return res.status(404).json({
+        success: false,
+        error: "Catatan log tidak ditemukan.",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      data: log,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Gagal mengambil rincian log.",
+    });
+  }
+});
+
+/**
  * POST /api/logs
  * Membuat entri catatan log harian baru
  */
 router.post("/", async (req, res) => {
   try {
-    // 1. Validasi input dengan Zod
     const validationResult = createLogSchema.safeParse(req.body);
     if (!validationResult.success) {
       const firstErrorMessage =
@@ -69,7 +131,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 2. Simpan ke database melalui logService
     const newLog = await logService.createLog(req.user.id, validationResult.data);
 
     return res.status(201).json({
@@ -80,6 +141,64 @@ router.post("/", async (req, res) => {
     return res.status(500).json({
       success: false,
       error: err.message || "Gagal menyimpan catatan log harian.",
+    });
+  }
+});
+
+/**
+ * PUT /api/logs/:id
+ * Memperbarui catatan log harian yang ada
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const validationResult = updateLogSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      const firstErrorMessage =
+        validationResult.error.errors[0]?.message || "Data pembaruan log tidak valid.";
+      return res.status(400).json({
+        success: false,
+        error: firstErrorMessage,
+      });
+    }
+
+    const updatedLog = await logService.updateLog(
+      req.user.id,
+      req.params.id,
+      validationResult.data
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: updatedLog,
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: err.message || "Gagal memperbarui catatan log.",
+    });
+  }
+});
+
+/**
+ * DELETE /api/logs/:id
+ * Menghapus catatan log harian
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    const deletedLog = await logService.deleteLog(req.user.id, req.params.id);
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: deletedLog.id,
+        message: "Catatan log berhasil dihapus.",
+      },
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: err.message || "Gagal menghapus catatan log.",
     });
   }
 });
@@ -116,4 +235,3 @@ router.get("/quick-log", (_req, res) => {
 });
 
 module.exports = router;
-
