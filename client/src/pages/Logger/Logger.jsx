@@ -194,37 +194,17 @@ export default function Logger() {
   const userName = user?.name ? user.name.split(" ")[0] : "Mitra";
 
   return (
-    <div className="bg-surface font-sans text-text-main flex flex-col min-h-screen antialiased select-none pb-20">
-      {/* Top Navigation Bar */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-b border-border-subtle">
-        <div className="h-14 px-4 max-w-lg mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <VitaraLogo className="w-7 h-7" showText={true} textClassName="text-base text-primary" />
-            <span className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-surface-muted text-text-soft border border-border-subtle uppercase shrink-0">
-              {user?.occupation || "DRIVER"}
-            </span>
-          </div>
-
-          {/* User Profile Pill */}
-          <div className="flex items-center gap-2 pl-2.5 pr-1 py-1 rounded-full bg-surface-muted border border-border-subtle">
-            <span className="text-[12px] font-semibold text-text-main pl-1">{userName}</span>
-            <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-              <span className="material-symbols-outlined text-[16px]">person</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="font-sans text-slate-800 flex flex-col antialiased">
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-lg mx-auto pt-18 px-4 flex flex-col gap-4">
+      <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
         {/* Greeting */}
-        <div className="pt-2 flex items-center justify-between">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <div>
-            <h1 className="font-display text-[20px] font-extrabold text-text-main leading-tight">
+            <h1 className="text-xl font-bold text-slate-900 leading-tight">
               Halo, {userName}! 👋
             </h1>
-            <p className="text-[12px] text-text-soft mt-0.5">
-              Catat sesi hari ini dalam &lt;30 detik
+            <p className="text-xs text-slate-500 mt-0.5">
+              Catat sesi kerja dan kondisi fisik hari ini dalam &lt;30 detik
             </p>
           </div>
         </div>
@@ -493,48 +473,7 @@ export default function Logger() {
             </span>
           </div>
         </footer>
-      </main>
-
-      {/* Bottom Navigation Bar (PWA Standard) */}
-      <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-border-subtle">
-        <div className="flex justify-around items-center h-14 px-2 max-w-lg mx-auto">
-          {/* Tab 1: Catat (Active / P1) */}
-          <Link
-            to="/logger"
-            className="flex flex-col items-center justify-center flex-1 h-full text-primary font-bold transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">edit_calendar</span>
-            <span className="text-[11px] mt-0.5">Catat</span>
-          </Link>
-
-          {/* Tab 2: Analisis (P3) */}
-          <Link
-            to="/dashboard"
-            className="flex flex-col items-center justify-center flex-1 h-full text-text-soft hover:text-text-main font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">monitoring</span>
-            <span className="text-[11px] mt-0.5">Analisis</span>
-          </Link>
-
-          {/* Tab 3: Konsultasi (P2) */}
-          <Link
-            to="/chat"
-            className="flex flex-col items-center justify-center flex-1 h-full text-text-soft hover:text-text-main font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">stethoscope</span>
-            <span className="text-[11px] mt-0.5">Konsultasi</span>
-          </Link>
-
-          {/* Tab 4: Faskes (P4) */}
-          <Link
-            to="/finder"
-            className="flex flex-col items-center justify-center flex-1 h-full text-text-soft hover:text-text-main font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">local_hospital</span>
-            <span className="text-[11px] mt-0.5">Faskes</span>
-          </Link>
-        </div>
-      </nav>
+      </div>
     </div>
   );
 }
