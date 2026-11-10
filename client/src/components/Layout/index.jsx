@@ -22,7 +22,7 @@ export const Layout = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#eef3f6] font-sans antialiased text-slate-800">
+    <div className="flex min-h-screen flex-col bg-[#eef3f6] dark:bg-slate-950 font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Header Bagian Paling Atas (Full Width) */}
       <Navbar />
 
@@ -37,11 +37,20 @@ export const Layout = ({ children }) => {
           <SubNavbar onToggleSidebar={toggleSidebar} />
 
           {/* Area Konten Utama Halaman (Putih Melengkung) */}
-          <main className="flex-1 rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7 shadow-xs overflow-y-auto">
+          <main className="flex-1 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-7 shadow-xs overflow-y-auto transition-colors duration-200">
             {children || <Outlet />}
           </main>
         </div>
       </div>
+
+      {/* 3. Footer Bagian Paling Bawah (Bentuk Mirip Header, Teks di Center) */}
+      <footer className="w-full border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 transition-colors duration-200">
+        <div className="flex items-center justify-center text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            &copy; 2024 VITARA Driver Ergonomics &amp; Health System &bull; Panduan K3 &bull; Pusat Bantuan &bull; call Darurat Medis 119
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

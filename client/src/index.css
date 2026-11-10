@@ -6,6 +6,162 @@
 
 @layer base {
   body {
-    @apply bg-surface text-text-main font-sans antialiased;
+    @apply bg-surface text-text-main font-sans antialiased transition-colors duration-200;
   }
+}
+
+/* ============================================================
+   Dark Mode Global Theme Override
+   Memastikan saat class "dark" aktif di <html>, seluruh elemen
+   otomatis beralih ke warna gelap yang nyaman di mata
+   ============================================================ */
+.dark body {
+  background-color: #0b1120 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark .bg-\[\#eef3f6\] {
+  background-color: #090e1a !important;
+}
+
+.dark header {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark aside {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark main {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-white {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/90,
+.dark .border-border-subtle {
+  border-color: #1e293b !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-text-main {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-text-muted,
+.dark .text-text-soft {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-surface-muted {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-surface,
+.dark .bg-surface\/95 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-200\/80 {
+  background-color: #1e293b !important;
+}
+
+/* Card Widget Health Monitoring di Sidebar & Komponen Konsultasi (Chat) saat Dark Mode */
+.dark .bg-\[\#cce3ed\] {
+  background-color: #164e63 !important;
+  color: #e0f2fe !important;
+}
+
+.dark .bg-\[\#b8d8e5\] {
+  background-color: #0e7490 !important;
+  color: #ffffff !important;
+}
+
+/* Penyesuaian Dark Mode pada Dashboard:
+   - Shape "KESEHATAN KERJA & PERFORMA • MINGGU KE-21" (.bg-cyan-50)
+   - Badge "Spesialis Okupasi" (.bg-cyan-50)
+   - Box "Rekomendasi Micro-Break" (.bg-cyan-50\/60)
+   Warna disamakan menjadi shape biru Health Monitoring (#164e63), teks Rekomendasi Micro-Break putih */
+.dark .bg-cyan-50,
+.dark .bg-cyan-50\/60 {
+  background-color: #164e63 !important;
+  border-color: #0e7490 !important;
+  color: #e0f2fe !important;
+}
+
+.dark .text-cyan-800,
+.dark .text-cyan-900 {
+  color: #ffffff !important;
+}
+
+.dark .bg-cyan-50\/60 span,
+.dark .bg-cyan-50\/60 p {
+  color: #ffffff !important;
+}
+
+/* Samakan background card / chip rekomendasi / container konsultasi menjadi warna navy sama dengan latar belakang (#0f172a / border #1e293b) */
+.dark [data-page="chat"] .bg-white,
+.dark [data-page="chat"] .bg-surface,
+.dark [data-page="chat"] .bg-surface\/95,
+.dark [data-page="chat"] .bg-surface-muted,
+.dark [data-page="chat"] button.rounded-full {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+.dark [data-page="chat"] .border-border-subtle {
+  border-color: #1e293b !important;
+}
+
+.dark [data-page="chat"] input,
+.dark [data-page="chat"] textarea {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+.dark [data-page="chat"] .text-text-main,
+.dark [data-page="chat"] .text-slate-800,
+.dark [data-page="chat"] .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.dark [data-page="chat"] .text-text-muted,
+.dark [data-page="chat"] .text-text-soft,
+.dark [data-page="chat"] .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }

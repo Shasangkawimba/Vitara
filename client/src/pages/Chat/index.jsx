@@ -129,7 +129,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
+    <div data-page="chat" className="flex flex-col min-h-[calc(100vh-8rem)]">
       {/* Header sesi */}
       <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-2 pb-3 bg-surface/95 backdrop-blur-md border-b border-border-subtle">
         <div className="flex items-center gap-3">

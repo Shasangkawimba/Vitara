@@ -692,7 +692,7 @@ export default function Logger() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[20px]">history_toggle_drop</span>
+                <span className="material-symbols-outlined text-[20px]">history</span>
               </span>
               <div>
                 <h3 className="text-sm font-bold text-text-main">Riwayat Catatan Shift & Pemulihan</h3>
@@ -801,23 +801,6 @@ export default function Logger() {
             </div>
           )}
         </section>
-
-        {/* Footer */}
-        <footer className="mt-2 pt-4 pb-2 px-2 text-center border-t border-border-subtle">
-          <p className="text-xs text-text-soft font-medium tracking-tight">
-            © 2024 VITARA Driver Ergonomics & Health System
-          </p>
-          <div className="mt-1 text-[11px] text-text-soft font-normal flex justify-center items-center gap-2 flex-wrap">
-            <span className="hover:text-text-main transition-colors cursor-pointer">Panduan K3</span>
-            <span>•</span>
-            <span className="hover:text-text-main transition-colors cursor-pointer">Pusat Bantuan</span>
-            <span>•</span>
-            <span className="hover:text-text-main transition-colors cursor-pointer flex items-center gap-1 text-red-600 font-bold">
-              <span className="material-symbols-outlined text-[14px]">call</span>
-              Darurat Medis 119
-            </span>
-          </div>
-        </footer>
       </div>
     </div>
   );

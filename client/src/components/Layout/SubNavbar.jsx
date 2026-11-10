@@ -22,13 +22,13 @@ export const SubNavbar = ({ onToggleSidebar }) => {
   };
 
   return (
-    <div className="flex h-16 w-full items-center gap-4 rounded-2xl border border-slate-200/80 bg-white px-5 shadow-xs">
+    <div className="flex h-16 w-full items-center gap-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 shadow-xs transition-colors duration-200">
       {/* Tombol Hamburger Menu */}
       <button
         type="button"
         onClick={onToggleSidebar}
         aria-label="Toggle Menu"
-        className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+        className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
       >
         <svg
           className="h-6 w-6"
@@ -47,10 +47,10 @@ export const SubNavbar = ({ onToggleSidebar }) => {
 
       {/* Judul & Breadcrumb */}
       <div className="flex flex-col">
-        <h2 className="text-sm font-bold text-slate-800 leading-tight">
+        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight">
           {infoHalaman.nama}
         </h2>
-        <span className="text-[11px] text-slate-400">
+        <span className="text-[11px] text-slate-400 dark:text-slate-500">
           {infoHalaman.sub}
         </span>
       </div>

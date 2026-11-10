@@ -108,7 +108,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
       {/* Floating Rounded Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white transition-all duration-300 ease-in-out lg:static lg:z-0 lg:rounded-2xl lg:border lg:border-slate-200/80 lg:shadow-xs ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-in-out lg:static lg:z-0 lg:rounded-2xl lg:border lg:border-slate-200/80 dark:lg:border-slate-800 lg:shadow-xs ${
           isOpen
             ? "w-60 p-5 translate-x-0 shadow-xl lg:shadow-xs"
             : "-translate-x-full lg:translate-x-0 lg:w-20 lg:p-3.5 lg:items-center"
