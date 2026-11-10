@@ -14,21 +14,22 @@ const router = express.Router();
 // Semua endpoint logs memerlukan autentikasi JWT
 router.use(authenticateToken);
 
-// Skema Validasi Input Log Baru menggunakan Zod
+// Skema Validasi Input Log Baru menggunakan Zod (Sesuai P1_PRIVATE.md: jam 0-24, pendapatan >= 0)
 const createLogSchema = z.object({
   workHours: z
     .number({ required_error: "Durasi jam kerja wajib diisi." })
     .int("Durasi jam kerja harus berupa bilangan bulat.")
-    .min(1, "Durasi jam kerja minimal 1 jam.")
+    .min(0, "Durasi jam kerja minimal 0 jam (hari libur/istirahat).")
     .max(24, "Durasi jam kerja maksimal 24 jam sehari."),
   income: z
     .number()
     .int("Penghasilan harus berupa bilangan bulat.")
-    .nonnegative("Penghasilan tidak boleh bernilai negatif.")
+    .min(0, "Penghasilan tidak boleh bernilai negatif.")
     .nullable()
     .optional(),
   symptoms: z
     .array(z.string().trim().min(1, "Keluhan tidak boleh kosong."))
+    .transform((items) => Array.from(new Set(items)))
     .optional()
     .default([]),
 });
@@ -38,27 +39,35 @@ const updateLogSchema = z.object({
   workHours: z
     .number()
     .int("Durasi jam kerja harus berupa bilangan bulat.")
-    .min(1, "Durasi jam kerja minimal 1 jam.")
+    .min(0, "Durasi jam kerja minimal 0 jam (hari libur/istirahat).")
     .max(24, "Durasi jam kerja maksimal 24 jam sehari.")
     .optional(),
   income: z
     .number()
     .int("Penghasilan harus berupa bilangan bulat.")
-    .nonnegative("Penghasilan tidak boleh bernilai negatif.")
+    .min(0, "Penghasilan tidak boleh bernilai negatif.")
     .nullable()
     .optional(),
   symptoms: z
     .array(z.string().trim().min(1, "Keluhan tidak boleh kosong."))
+    .transform((items) => Array.from(new Set(items)))
     .optional(),
 });
 
 /**
  * GET /api/logs
- * Mengambil daftar seluruh riwayat log milik user yang sedang login
+ * Mengambil daftar riwayat log milik user yang sedang login
+ * Query params opsional: ?limit=7&startDate=2026-11-01&endDate=2026-11-10
  */
 router.get("/", async (req, res) => {
   try {
-    const logs = await logService.getUserLogs(req.user.id);
+    const { limit, startDate, endDate } = req.query;
+    const filter = {
+      limit: limit ? parseInt(limit, 10) : undefined,
+      startDate,
+      endDate,
+    };
+    const logs = await logService.getUserLogs(req.user.id, filter);
     return res.status(200).json({
       success: true,
       data: logs,

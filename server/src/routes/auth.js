@@ -51,14 +51,36 @@ router.get("/register", (_req, res) => {
   });
 });
 
-// Skema Validasi Registrasi dengan Zod
+/**
+ * Normalisasi nomor telepon Indonesia ke format standar 08xxx
+ * Mendukung: 08..., +628..., 628..., 8...
+ * @param {string} phone - Nomor telepon mentah
+ * @returns {string} Nomor telepon ternormalisasi
+ */
+function normalizePhone(phone) {
+  let cleaned = phone.replace(/[\s\-()]/g, "");
+  if (cleaned.startsWith("+62")) {
+    cleaned = "0" + cleaned.slice(3);
+  } else if (cleaned.startsWith("62") && cleaned.length >= 11) {
+    cleaned = "0" + cleaned.slice(2);
+  } else if (cleaned.startsWith("8") && !cleaned.startsWith("0")) {
+    cleaned = "0" + cleaned;
+  }
+  return cleaned;
+}
+
+// Skema Validasi Registrasi dengan Zod (Minggu 4: normalisasi telepon)
 const registerSchema = z.object({
   phone: z
     .string({ required_error: "Nomor telepon wajib diisi." })
     .trim()
-    .min(10, "Nomor telepon minimal 10 digit.")
-    .max(15, "Nomor telepon maksimal 15 digit.")
-    .regex(/^[0-9+]+$/, "Nomor telepon hanya boleh berisi angka dan tanda plus."),
+    .transform(normalizePhone)
+    .pipe(
+      z.string()
+        .min(10, "Nomor telepon minimal 10 digit.")
+        .max(15, "Nomor telepon maksimal 15 digit.")
+        .regex(/^[0-9]+$/, "Nomor telepon hanya boleh berisi angka.")
+    ),
   password: z
     .string({ required_error: "Kata sandi wajib diisi." })
     .min(6, "Kata sandi minimal 6 karakter."),
@@ -74,12 +96,13 @@ const registerSchema = z.object({
     .optional(),
 });
 
-// Skema Validasi Login dengan Zod
+// Skema Validasi Login dengan Zod (Minggu 4: normalisasi telepon)
 const loginSchema = z.object({
   phone: z
     .string({ required_error: "Nomor telepon wajib diisi." })
     .trim()
-    .min(1, "Nomor telepon wajib diisi."),
+    .transform(normalizePhone)
+    .pipe(z.string().min(1, "Nomor telepon wajib diisi.")),
   password: z
     .string({ required_error: "Kata sandi wajib diisi." })
     .min(1, "Kata sandi wajib diisi."),

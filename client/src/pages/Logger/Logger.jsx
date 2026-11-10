@@ -11,53 +11,54 @@ import api from "../../services/api";
 import VitaraLogo from "../../components/VitaraLogo";
 import VoiceInput from "../../components/VoiceInput";
 
-// Daftar keluhan fisik sesuai rancangan desain Stitch
+// Daftar keluhan fisik sesuai rancangan desain Stitch dan dialek/slang pengemudi
 const SYMPTOM_OPTIONS = [
   {
     id: "Sakit Pinggang",
     label: "Sakit Pinggang",
     subLabel: "Punggung / Lumbal",
     icon: "airline_seat_recline_extra",
-    keywords: ["pinggang", "punggung", "lumbal", "pegel pinggang", "boyok"],
+    keywords: ["pinggang", "punggung", "lumbal", "pegel pinggang", "boyok", "encok", "pinggang pegel"],
   },
   {
     id: "Leher & Bahu",
     label: "Leher & Bahu",
     subLabel: "Kaku / Tegang",
     icon: "accessibility_new",
-    keywords: ["leher", "bahu", "pundak", "kaku", "tenggorokan"],
+    keywords: ["leher", "bahu", "pundak", "kaku", "tenggorokan", "tengeng", "leher kaku", "pegel pundak"],
   },
   {
     id: "Lutut & Kaki",
     label: "Lutut & Kaki",
     subLabel: "Pegal / Kesemutan",
     icon: "directions_walk",
-    keywords: ["lutut", "kaki", "betis", "kesemutan", "paha"],
+    keywords: ["lutut", "kaki", "betis", "kesemutan", "paha", "dengkul", "pegel linu", "kebas", "kram kaki"],
   },
   {
     id: "Pergelangan",
     label: "Pergelangan",
     subLabel: "Kram Gas / Kopling",
     icon: "pan_tool",
-    keywords: ["pergelangan", "tangan", "jari", "kram", "gas", "kopling"],
+    keywords: ["pergelangan", "tangan", "jari", "kram", "gas", "kopling", "jempol", "tangan kebas"],
   },
   {
     id: "Mata Lelah",
     label: "Mata Lelah",
     subLabel: "Silau Terik / Kering",
     icon: "visibility",
-    keywords: ["mata", "silau", "pedih", "sepet", "kabur"],
+    keywords: ["mata", "silau", "pedih", "sepet", "kabur", "kunang", "buram", "mata kering", "sepet"],
   },
   {
     id: "Pusing Kepala",
     label: "Pusing Kepala",
     subLabel: "Dehidrasi / Panas",
     icon: "sentiment_dissatisfied",
-    keywords: ["pusing", "kepala", "migrain", "pening", "dehidrasi"],
+    keywords: ["pusing", "kepala", "migrain", "pening", "dehidrasi", "keliyengan", "masuk angin", "mumet"],
   },
 ];
 
 const HOUR_PRESETS = [
+  { hours: 0, label: "0 Jam", badge: "Libur" },
   { hours: 4, label: "4 Jam", badge: "Ringan" },
   { hours: 8, label: "8 Jam", badge: "Standar" },
   { hours: 10, label: "10 Jam", badge: "Padat" },
@@ -231,10 +232,10 @@ export default function Logger() {
     const cleanIncome = income ? parseInt(income.replace(/\D/g, ""), 10) : null;
     const finalSymptoms = isHealthy ? ["Bebas Keluhan & Bugar"] : selectedSymptoms;
 
-    if (isNaN(finalHours) || finalHours <= 0 || finalHours > 24) {
+    if (isNaN(finalHours) || finalHours < 0 || finalHours > 24) {
       setAlertInfo({
         type: "error",
-        message: "Durasi jam kerja harus di antara 1 hingga 24 jam sehari.",
+        message: "Durasi jam kerja harus di antara 0 hingga 24 jam sehari.",
       });
       return;
     }
