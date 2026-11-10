@@ -19,9 +19,10 @@ model User {
   password   String
   name       String
   occupation String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  workLogs   WorkLog[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  workLogs       WorkLog[]
+  aiInteractions AiInteraction[]
 }
 
 // Model Pencatatan Kerja & Kesehatan (WorkLog)
@@ -35,5 +36,17 @@ model WorkLog {
   symptoms  String[] // Array keluhan fisik (contoh: ["pegal linu", "sakit pinggang"])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Model Interaksi AI (AiInteraction)
+// Menyimpan percakapan konsultasi dengan Ergo-Coach AI (Dibutuhkan oleh P2)
+model AiInteraction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pesanUser   String
+  responsAi   Json     // Format JSON: { analisis, rencana_pemulihan, saran_otc, peringatan, disclaimer }
+  isEmergency Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
 

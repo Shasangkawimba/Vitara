@@ -6,6 +6,8 @@
 // import halamannya di file ini.
 // ============================================================
 import { Routes, Route } from "react-router-dom";
+import AuthPage from "./pages/Auth";
+import Logger from "./pages/Logger";
 
 // Placeholder sementara — akan diganti halaman asli milik masing-masing P.
 const Placeholder = ({ nama, pemilik }) => (
@@ -23,9 +25,9 @@ function App() {
   return (
     <Routes>
       {/* Path sesuai pembagian tugas di README: P1–P4 */}
-      <Route path="/" element={<Placeholder nama="Beranda" pemilik="P1 (Auth)" />} />
-      <Route path="/login" element={<Placeholder nama="Login / Register" pemilik="P1" />} />
-      <Route path="/logger" element={<Placeholder nama="Logger" pemilik="P1" />} />
+      <Route path="/" element={<Logger />} />
+      <Route path="/login" element={<AuthPage />} />
+      <Route path="/logger" element={<Logger />} />
       <Route path="/chat" element={<Placeholder nama="Chat Ergo-Coach AI" pemilik="P2" />} />
       <Route path="/dashboard" element={<Placeholder nama="Dashboard" pemilik="P3" />} />
       <Route path="/finder" element={<Placeholder nama="Finder Kesehatan" pemilik="P4" />} />
