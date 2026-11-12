@@ -10,6 +10,7 @@ import { Routes, Route, Navigate, Link } from "react-router-dom";
 import Layout from "./components/Layout";
 import DashboardPage from "./pages/Dashboard";
 import ReminderPage from "./pages/Reminder";
+import FinderPage from "./pages/Finder";
 import AuthPage from "./pages/Auth";
 import Logger from "./pages/Logger";
 import ChatPage from "./pages/Chat";
@@ -128,16 +129,7 @@ function App() {
         <Route path="/chat" element={<ChatPage />} />
 
         {/* Rute Finder Fasilitas Kesehatan — Tanggung Jawab P4 */}
-        <Route
-          path="/finder"
-          element={
-            <PlaceholderPage
-              nama="Finder Fasilitas Kesehatan"
-              pemilik="P4 (Finder)"
-              deskripsi="Peta interaktif Leaflet untuk mencari apotek dan klinik terdekat (radius 3 km)."
-            />
-          }
-        />
+        <Route path="/finder" element={<FinderPage />} />
 
         {/* Rute Pengingat (Reminder) — Tanggung Jawab P4 */}
         <Route path="/reminder" element={<ReminderPage />} />
