@@ -22,16 +22,33 @@ app.use("/api/ai", aiRoutes);
 const dashboardRoutes = require("./routes/dashboard");
 app.use("/api/dashboard", dashboardRoutes);
 
-// Routes milik P4 (Utility: Finder & Pharmacy)
+// Routes milik P4 (Utility: Finder & Pharmacy & Reminders)
 const pharmacyRoutes = require("./routes/pharmacy");
 app.use("/api/pharmacy", pharmacyRoutes);
+
+const reminderRoutes = require("./routes/reminders");
+app.use("/api/reminders", reminderRoutes);
+
+// Route Root (Health Check & Info)
+app.get("/", (_req, res) => {
+  res.json({
+    success: true,
+    message: "Server API VITARA berjalan dengan baik.",
+    endpoints: [
+      "/api/reminders",
+      "/api/pharmacy",
+      "/api/dashboard",
+      "/api/ai"
+    ]
+  });
+});
 
 // 404 → format standar sesuai API_CONTRACT.md
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: "Endpoint tidak ditemukan." });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server VITARA berjalan di http://localhost:${PORT}`);
 });
