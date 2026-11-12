@@ -10,6 +10,9 @@ import { Routes, Route, Navigate, Link } from "react-router-dom";
 import Layout from "./components/Layout";
 import DashboardPage from "./pages/Dashboard";
 import ReminderPage from "./pages/Reminder";
+import AuthPage from "./pages/Auth";
+import Logger from "./pages/Logger";
+import ChatPage from "./pages/Chat";
 
 /**
  * Komponen Placeholder Standar
@@ -108,7 +111,7 @@ function App() {
   return (
     <Routes>
       {/* 1. Halaman Publik / Auth (Tanpa Layout Shell) */}
-      <Route path="/login" element={<LoginPlaceholder />} />
+      <Route path="/login" element={<AuthPage />} />
 
       {/* 2. Halaman Internal Aplikasi (Dibungkus Layout Shell: Navbar & Sidebar) */}
       <Route element={<Layout />}>
@@ -119,28 +122,10 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Rute Catatan Harian (Logger) — Tanggung Jawab P1 */}
-        <Route
-          path="/logger"
-          element={
-            <PlaceholderPage
-              nama="Pencatatan Harian (Logger)"
-              pemilik="P1 (Logger)"
-              deskripsi="Form pencatatan jam kerja, pendapatan, serta keluhan fisik harian dan Quick-Log."
-            />
-          }
-        />
+        <Route path="/logger" element={<Logger />} />
 
         {/* Rute Ergo-Coach AI (Chat) — Tanggung Jawab P2 */}
-        <Route
-          path="/chat"
-          element={
-            <PlaceholderPage
-              nama="Ergo-Coach AI"
-              pemilik="P2 (AI Engine)"
-              deskripsi="Sesi konsultasi interaktif berbasis AI untuk evaluasi ergonomi dan keluhan kerja."
-            />
-          }
-        />
+        <Route path="/chat" element={<ChatPage />} />
 
         {/* Rute Finder Fasilitas Kesehatan — Tanggung Jawab P4 */}
         <Route
