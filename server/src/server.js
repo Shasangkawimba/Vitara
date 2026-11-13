@@ -67,35 +67,16 @@ const pharmacyRoutes = require("./routes/pharmacy");
 app.use("/api/pharmacy", pharmacyRoutes);
 app.use("/pharmacy", pharmacyRoutes);
 
-<<<<<<< HEAD
 const reminderRoutes = require("./routes/reminders");
 app.use("/api/reminders", reminderRoutes);
+app.use("/reminders", reminderRoutes);
 
-// Route Root (Health Check & Info)
-app.get("/", (_req, res) => {
-  res.json({
-    success: true,
-    message: "Server API VITARA berjalan dengan baik.",
-    endpoints: [
-      "/api/reminders",
-      "/api/pharmacy",
-      "/api/dashboard",
-      "/api/ai"
-    ]
-  });
-});
-
-// 404 → format standar sesuai API_CONTRACT.md
-app.use((_req, res) => {
-  res.status(404).json({ success: false, error: "Endpoint tidak ditemukan." });
-=======
 // 404 → format standar sesuai API_CONTRACT.md dengan info URL detail
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: `Endpoint '${req.method} ${req.originalUrl}' tidak ditemukan. Periksa kembali endpoint di API_CONTRACT.md.`,
   });
->>>>>>> 75e1ea9064ec97b773d849db21e41483b436d326
 });
 
 const PORT = process.env.PORT || 5001;
