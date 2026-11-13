@@ -243,14 +243,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
          ======================================================== */}
       <nav
         aria-label="Navigasi Bawah Mobile"
-        className="fixed bottom-0 left-0 right-0 z-50 flex lg:hidden items-center justify-between border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-1 py-1.5 shadow-lg w-full overflow-hidden"
+        className="fixed bottom-0 left-0 right-0 z-50 flex lg:hidden items-center justify-between border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-0.5 py-1 shadow-lg w-full overflow-hidden"
       >
         {MENU_ITEMS.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 px-0.5 transition-all min-w-0 ${
+              `flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 px-0 transition-all min-w-0 ${
                 isActive
                   ? "bg-[#cce3ed] dark:bg-slate-800 text-slate-900 dark:text-teal-400 font-bold"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
@@ -265,7 +265,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
                     {item.icon}
                   </span>
                 </span>
-                <span className="text-[9px] xs:text-[10px] tracking-tighter leading-tight truncate text-center w-full block">
+                <span className="text-[8.5px] min-[360px]:text-[9.5px] sm:text-[10px] tracking-tight leading-tight truncate text-center w-full px-0.5 block">
                   {item.label}
                 </span>
               </>

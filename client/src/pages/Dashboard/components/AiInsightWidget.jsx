@@ -18,41 +18,47 @@ export const AiInsightWidget = ({ riskScoreData, weeklyInsightData, loading }) =
     if (score === null || score === undefined) {
       return {
         label: "Belum Ada Data",
-        textColor: "text-slate-600 dark:text-slate-300",
-        bgColor: "bg-slate-50 dark:bg-slate-800/60",
+        textColor: "text-slate-600 dark:text-slate-200",
+        bgColor: "bg-slate-50 dark:bg-slate-800",
         borderColor: "border-slate-200 dark:border-slate-700",
-        barColor: "bg-slate-400",
+        barColor: "bg-slate-400 dark:bg-slate-500",
+        badgeBg: "bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600",
+        badgeDot: "bg-slate-400 dark:bg-slate-300",
         pesan: "Catat jam kerja hari ini di Catatan Harian untuk memantau risiko kelelahan Anda.",
       };
     }
     if (score >= 70 || apiLevel === "Risiko Tinggi") {
       return {
         label: "Risiko Tinggi",
-        textColor: "text-rose-700 dark:text-rose-400",
-        bgColor: "bg-rose-50 dark:bg-rose-950/30",
-        borderColor: "border-rose-200 dark:border-rose-800/60",
+        textColor: "text-rose-700 dark:text-rose-300",
+        bgColor: "bg-rose-50 dark:bg-rose-950/40",
+        borderColor: "border-rose-200 dark:border-rose-800",
         barColor: "bg-rose-500",
+        badgeBg: "bg-rose-100 dark:bg-rose-900/50 border-rose-300 dark:border-rose-700",
+        badgeDot: "bg-rose-600 dark:bg-rose-400",
         pesan: saranRisk || "Beban kerja ekstrem. Sangat disarankan kurangi durasi berkendara hari ini.",
       };
     }
     if (score >= 40 || apiLevel === "Risiko Sedang") {
       return {
         label: "Risiko Sedang",
-        textColor: "text-[#c2410c] dark:text-[#c2410c]", // Orange tua
-        bgColor: "bg-amber-50",
-        borderColor: "border-amber-200",
+        textColor: "text-[#c2410c] dark:text-amber-300",
+        bgColor: "bg-amber-50 dark:bg-amber-950/30",
+        borderColor: "border-amber-200 dark:border-amber-800/80",
         barColor: "bg-amber-500",
-        badgeBg: "bg-orange-100/90 border-orange-300",
+        badgeBg: "bg-orange-100/90 dark:bg-amber-900/50 border-orange-300 dark:border-amber-700",
+        badgeDot: "bg-[#c2410c] dark:bg-amber-400",
         pesan: saranRisk || "Mulai timbul kelelahan otot. Lakukan peregangan berkala setiap 2 jam berkendara.",
       };
     }
     return {
       label: "Risiko Rendah",
-      textColor: "text-emerald-700",
-      bgColor: "bg-emerald-50",
-      borderColor: "border-emerald-200",
+      textColor: "text-emerald-700 dark:text-emerald-300",
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
+      borderColor: "border-emerald-200 dark:border-emerald-800/80",
       barColor: "bg-emerald-500",
-      badgeBg: "bg-emerald-100/90 border-emerald-300 text-emerald-800",
+      badgeBg: "bg-emerald-100/90 dark:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700",
+      badgeDot: "bg-emerald-600 dark:bg-emerald-400",
       pesan: saranRisk || "Kondisi fisik stabil. Pertahankan pola istirahat dan hidrasi cairan.",
     };
   };
@@ -70,13 +76,13 @@ export const AiInsightWidget = ({ riskScoreData, weeklyInsightData, loading }) =
       {/* 1. Skor Risiko Harian AI (0 - 100) */}
       <div className={`risk-score-card rounded-xl border p-5 shadow-xs transition-colors ${level.borderColor} ${level.bgColor}`}>
         <div className="flex items-center justify-between">
-          <span className="risk-score-label text-xs font-bold uppercase tracking-wider text-slate-700">
+          <span className="risk-score-label text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
             Skor Risiko Kelelahan
           </span>
           <span
             className={`risk-score-badge inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${level.textColor} ${level.badgeBg} shadow-2xs`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#c2410c] shrink-0" />
+            <span className={`w-1.5 h-1.5 rounded-full ${level.badgeDot || "bg-slate-400"} shrink-0`} />
             <span>{level.label}</span>
           </span>
         </div>
@@ -86,10 +92,10 @@ export const AiInsightWidget = ({ riskScoreData, weeklyInsightData, loading }) =
             <div className="h-10 w-24 animate-pulse rounded-md bg-slate-200 dark:bg-slate-700" />
           ) : (
             <>
-              <span className="risk-score-number text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+              <span className="risk-score-number text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                 {skor !== null ? skor : "—"}
               </span>
-              <span className="risk-score-sub text-xs sm:text-sm font-semibold text-slate-500">
+              <span className="risk-score-sub text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-300">
                 {skor !== null ? "/ 100" : "Belum dinilai"}
               </span>
             </>
@@ -97,14 +103,14 @@ export const AiInsightWidget = ({ riskScoreData, weeklyInsightData, loading }) =
         </div>
 
         {/* Meter Bar Progress */}
-        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/80 dark:bg-slate-700">
           <div
             className={`h-full rounded-full transition-all duration-500 ${level.barColor}`}
             style={{ width: `${skor !== null ? Math.min(Math.max(skor, 5), 100) : 0}%` }}
           />
         </div>
 
-        <p className="risk-score-desc mt-3 text-xs leading-relaxed text-slate-700">
+        <p className="risk-score-desc mt-3 text-xs leading-relaxed text-slate-700 dark:text-slate-200">
           {level.pesan}
         </p>
       </div>

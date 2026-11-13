@@ -97,19 +97,19 @@ export const Navbar = () => {
       </Link>
 
       {/* Kanan: Theme Toggle dan Profil User */}
-      <div className="flex items-center gap-2.5 sm:gap-6">
+      <div className="flex items-center gap-1.5 sm:gap-6">
         {/* Icon Dark/Light Mode (Moon saat terang, Sun saat gelap) */}
         <button
           type="button"
           onClick={toggleDarkMode}
           aria-label={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
           title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-          className="rounded-xl p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-yellow-400 dark:hover:bg-slate-800 transition cursor-pointer"
+          className="rounded-xl p-1.5 sm:p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-yellow-400 dark:hover:bg-slate-800 transition cursor-pointer"
         >
           {isDark ? (
             /* Icon Matahari (Sun) untuk beralih ke Light Mode */
             <svg
-              className="h-5 w-5 text-yellow-400"
+              className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -124,7 +124,7 @@ export const Navbar = () => {
           ) : (
             /* Icon Bulan (Moon) untuk beralih ke Dark Mode */
             <svg
-              className="h-5 w-5"
+              className="h-4 w-4 sm:h-5 sm:w-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -140,7 +140,7 @@ export const Navbar = () => {
         </button>
 
         {/* User Profile Pill / Menu */}
-        <div className="relative pl-2">
+        <div className="relative pl-1 sm:pl-2">
           {user ? (
             <div>
               <button
@@ -216,16 +216,16 @@ export const Navbar = () => {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Link
                 to="/login"
-                className="rounded-xl bg-[#cce3ed] hover:bg-[#b8d8e5] text-slate-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold transition shadow-2xs whitespace-nowrap"
+                className="rounded-xl bg-[#cce3ed] hover:bg-[#b8d8e5] text-slate-800 px-2 sm:px-3.5 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold transition shadow-2xs whitespace-nowrap"
               >
                 Masuk
               </Link>
               <Link
                 to="/register"
-                className="inline-block rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium transition whitespace-nowrap"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium transition whitespace-nowrap"
               >
                 Daftar
               </Link>

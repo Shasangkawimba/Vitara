@@ -6,6 +6,10 @@
 const express = require("express");
 const router = express.Router();
 const analyticsService = require("../services/analyticsService");
+const { authenticateToken } = require("../middlewares/authMiddleware");
+
+// Seluruh endpoint Dashboard WAJIB terautentikasi JWT (isolasi data pengguna)
+router.use(authenticateToken);
 
 // Validasi query parameter menggunakan Zod secara aman (fallback jika zod belum di-install)
 let z;
@@ -18,7 +22,6 @@ try {
 const dashboardQuerySchema = z
   ? z.object({
       days: z.coerce.number().int().positive().default(7),
-      userId: z.string().optional(),
     })
   : null;
 
@@ -33,7 +36,6 @@ const validateQuery = (query) => {
   return {
     data: {
       days: Number(query.days) || 7,
-      userId: query.userId,
     },
   };
 };
@@ -49,7 +51,8 @@ router.get("/summary", async (req, res) => {
       return res.status(400).json({ success: false, error });
     }
 
-    const userId = req.user?.id || data.userId || null;
+    // userId HARUS murni berasal dari payload JWT yang sudah diverifikasi oleh middleware
+    const userId = req.user.id;
     const summaryData = await analyticsService.getDashboardSummary(userId, data.days);
     return res.json({ success: true, data: summaryData });
   } catch (err) {
@@ -72,7 +75,7 @@ router.get("/correlation", async (req, res) => {
       return res.status(400).json({ success: false, error });
     }
 
-    const userId = req.user?.id || data.userId || null;
+    const userId = req.user.id;
     const correlationData = await analyticsService.getCorrelationData(userId, data.days);
     return res.json({ success: true, data: correlationData });
   } catch (err) {
@@ -95,7 +98,7 @@ router.get("/trend", async (req, res) => {
       return res.status(400).json({ success: false, error });
     }
 
-    const userId = req.user?.id || data.userId || null;
+    const userId = req.user.id;
     const trendData = await analyticsService.getTrendData(userId, data.days);
     return res.json({ success: true, data: trendData });
   } catch (err) {
