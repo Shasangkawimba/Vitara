@@ -1,11 +1,17 @@
 // ============================================================
 // client/src/pages/Reminder/index.jsx
-// Halaman Pengingat Kesehatan VITARA (Milik P4)
+// Halaman Pengingat Kesehatan VITARA (Milik P4 - Minggu 4 Selesai)
 // Fitur: Time picker, pemilihan kategori, pengulangan hari,
-// manajemen jadwal pengingat, dan integrasi notifikasi browser.
+// integrasi Web Notification API otomatis, Web Audio Chime, & Real-time Scheduler.
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import {
+  sendWebNotification,
+  requestNotificationPermission as requestPermissionHelper,
+  checkDueReminders,
+  playNotificationSound,
+} from '../../services/reminderScheduler';
 
 // Daftar kategori pengingat kesehatan kerja
 const CATEGORIES = [
@@ -64,6 +70,10 @@ export default function ReminderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [lastTriggeredReminder, setLastTriggeredReminder] = useState(null);
+
+  // Waktu sistem saat ini (jam digital)
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   // State Form
   const [time, setTime] = useState('12:00');
@@ -80,10 +90,29 @@ export default function ReminderPage() {
       : 'unsupported'
   );
 
-  // Memuat data pengingat dari API saat komponen dimuat
+  // 1. Memuat data pengingat dari API saat komponen dimuat
   useEffect(() => {
     fetchReminders();
   }, []);
+
+  // 2. Scheduler Waktu Nyata (Pengecekan otomatis setiap 15 detik)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now);
+
+      // Periksa apakah ada alarm yang jamnya tiba
+      if (reminders.length > 0) {
+        checkDueReminders(reminders, (triggered) => {
+          setLastTriggeredReminder(triggered);
+          setSuccessMessage(`Alarm berbunyi: ${triggered.title}`);
+          setTimeout(() => setSuccessMessage(''), 8000);
+        });
+      }
+    }, 15000);
+
+    return () => clearInterval(timer);
+  }, [reminders]);
 
   const fetchReminders = async () => {
     try {
@@ -95,7 +124,7 @@ export default function ReminderPage() {
       }
     } catch (err) {
       console.error('Gagal mengambil data pengingat:', err);
-      setErrorMessage('Gagal memuat jadwal pengingat. Silakan coba beberapa saat lagi.');
+      setErrorMessage('Gagal memuat jadwal pengingat. Silakan periksa koneksi backend.');
     } finally {
       setLoading(false);
     }
@@ -118,17 +147,27 @@ export default function ReminderPage() {
     }
   };
 
-  // Pilih preset hari
+  // Preset hari
   const selectAllDays = () => setSelectedDays([...DAYS_LIST]);
   const selectWorkDays = () => setSelectedDays(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat']);
-  const selectWeekend = () => setSelectedDays(['Sabtu', 'Minggu']);
 
   // Preset jam cepat
   const setQuickTime = (hhMm) => {
     setTime(hhMm);
   };
 
-  // Simpan pengingat baru
+  // Terapkan Preset Gig Worker Cepat
+  const applyPreset = (categoryIndex, presetTime, customTitle, customNotes) => {
+    const cat = CATEGORIES[categoryIndex];
+    setSelectedCategory(cat);
+    setTime(presetTime);
+    setTitle(customTitle || cat.defaultTitle);
+    setNotes(customNotes || cat.defaultNotes);
+    setSelectedDays([...DAYS_LIST]);
+    setIsFormOpen(true);
+  };
+
+  // Simpan pengingat baru ke backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -153,8 +192,7 @@ export default function ReminderPage() {
 
       const response = await api.post('/api/reminders', payload);
       if (response.data && response.data.success) {
-        setSuccessMessage('Pengingat baru berhasil disimpan!');
-        setIsFormOpen(false);
+        setSuccessMessage('Pengingat baru berhasil disimpan ke jadwal!');
         fetchReminders();
         setTimeout(() => setSuccessMessage(''), 3500);
       }
@@ -200,28 +238,41 @@ export default function ReminderPage() {
   };
 
   // Meminta izin Web Notification
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      alert('Browser Anda tidak mendukung Web Notification API.');
-      return;
-    }
+  const handleRequestPermission = async () => {
+    const res = await requestPermissionHelper();
+    setNotificationPermission(res);
 
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-
-      if (permission === 'granted') {
-        new Notification('VITARA — Notifikasi Aktif', {
-          body: 'Notifikasi pengingat kesehatan kerja Anda siap bekerja!',
-          icon: '/icon-192.png',
-        });
-      }
-    } catch (err) {
-      console.error('Error saat meminta izin notifikasi:', err);
+    if (res === 'granted') {
+      sendWebNotification('🎉 VITARA: Notifikasi Berhasil Diaktifkan!', {
+        body: 'Pengingat istirahat dan hidrasi Anda kini aktif di browser ini.',
+      });
+      setSuccessMessage('Izin notifikasi diberikan! Notifikasi pengingat otomatis aktif.');
+      setTimeout(() => setSuccessMessage(''), 4000);
+    } else if (res === 'denied') {
+      alert(
+        'Izin notifikasi ditolak oleh browser. Anda dapat mengaktifkannya kembali melalui ikon gembok di sebelah kiri address bar browser Anda.'
+      );
     }
   };
 
-  // Helper mendapatkan warna badge kategori
+  // Uji Coba Suara & Notifikasi Langsung
+  const handleTestNotification = () => {
+    if (notificationPermission !== 'granted') {
+      handleRequestPermission();
+      return;
+    }
+
+    const success = sendWebNotification('🔔 VITARA: Uji Coba Pengingat Kesehatan', {
+      body: 'Ini adalah contoh bunyi bel dan notifikasi pengingat istirahat kerja Anda.',
+    });
+
+    if (success) {
+      setSuccessMessage('Notifikasi uji coba berhasil dikirim!');
+      setTimeout(() => setSuccessMessage(''), 3500);
+    }
+  };
+
+  // Helper warna badge kategori
   const getCategoryBadge = (type) => {
     const cat = CATEGORIES.find((c) => c.id === type) || CATEGORIES[4];
     return (
@@ -232,63 +283,133 @@ export default function ReminderPage() {
     );
   };
 
+  const formattedCurrentTime = currentTime.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Header Halaman */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-2xl">⏰</span>
-              <h1 className="text-2xl font-bold text-slate-800">Pengingat Kesehatan</h1>
+              <h1 className="text-2xl font-bold text-slate-800">Pengingat Kesehatan Kerja</h1>
             </div>
             <p className="text-sm text-slate-500 mt-1">
-              Atur alarm istirahat, minum air, dan peregangan saat berkendara atau bekerja.
+              Atur alarm istirahat, hidrasi, dan peregangan saat berkendara. Otomatis dibunyikan via Web Notification API.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsFormOpen(!isFormOpen)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-          >
-            <svg
-              className={`w-5 h-5 transition-transform ${isFormOpen ? 'rotate-45' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Tombol Uji Notifikasi Langsung */}
+            <button
+              type="button"
+              onClick={handleTestNotification}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs shadow-sm transition"
+              title="Tes Bunyi & Pop-up Notifikasi"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {isFormOpen ? 'Tutup Form' : 'Tambah Pengingat'}
-          </button>
+              <span>🔔</span>
+              <span>Uji Notifikasi</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(!isFormOpen)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm shadow-sm transition-all"
+            >
+              <svg
+                className={`w-4 h-4 transition-transform ${isFormOpen ? 'rotate-45' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {isFormOpen ? 'Sembunyikan Form' : 'Tambah Pengingat'}
+            </button>
+          </div>
         </div>
 
-        {/* Notifikasi Izin Browser */}
+        {/* Status Bar Notifikasi & Scheduler Waktu Nyata */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          {/* Kolom 1: Jam Sistem */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg">
+              ⏱️
+            </div>
+            <div>
+              <p className="text-slate-400 font-medium">Waktu Sekarang</p>
+              <p className="text-sm font-bold text-slate-800 tracking-wide">{formattedCurrentTime} WIB</p>
+            </div>
+          </div>
+
+          {/* Kolom 2: Status Izin Browser */}
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                notificationPermission === 'granted'
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-amber-50 text-amber-600'
+              }`}
+            >
+              {notificationPermission === 'granted' ? '✅' : '⚠️'}
+            </div>
+            <div>
+              <p className="text-slate-400 font-medium">Izin Browser</p>
+              <p className="text-sm font-bold text-slate-800">
+                {notificationPermission === 'granted'
+                  ? 'Aktif (Diizinkan)'
+                  : notificationPermission === 'denied'
+                  ? 'Diblokir di Browser'
+                  : 'Belum Diizinkan'}
+              </p>
+            </div>
+          </div>
+
+          {/* Kolom 3: Status Background Scheduler */}
+          <div className="flex items-center justify-between sm:justify-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-lg">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+            </div>
+            <div>
+              <p className="text-slate-400 font-medium">Background Checker</p>
+              <p className="text-sm font-bold text-emerald-700">Aktif Setiap Menit</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Banner Ajakan Izin jika belum aktif */}
         {notificationPermission !== 'granted' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <span className="text-xl">🔔</span>
               <div>
-                <h4 className="text-sm font-semibold text-blue-900">Aktifkan Notifikasi Browser</h4>
-                <p className="text-xs text-blue-700 mt-0.5">
-                  Izinkan notifikasi agar VITARA dapat mengingatkan Anda tepat waktu meskipun sedang membuka aplikasi lain.
+                <h4 className="text-sm font-semibold text-amber-900">Aktifkan Web Notification API</h4>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Agar alarm VITARA tetap dapat berbunyi dan memunculkan pop-up saat Anda membuka tab lain atau sedang berkendara.
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={requestNotificationPermission}
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-sm transition whitespace-nowrap"
+              onClick={handleRequestPermission}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition whitespace-nowrap"
             >
-              Aktifkan Izin
+              Izinkan Notifikasi Sekarang
             </button>
           </div>
         )}
 
         {/* Pesan Sukses / Error Alert */}
         {successMessage && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center justify-between">
+          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center justify-between animate-fadeIn">
             <div className="flex items-center gap-2">
               <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                 <path
@@ -297,7 +418,7 @@ export default function ReminderPage() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span>{successMessage}</span>
+              <span className="font-medium">{successMessage}</span>
             </div>
             <button type="button" onClick={() => setSuccessMessage('')} className="text-emerald-600 font-bold">
               ×
@@ -308,13 +429,7 @@ export default function ReminderPage() {
         {errorMessage && (
           <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <span className="text-base">⚠️</span>
               <span>{errorMessage}</span>
             </div>
             <button type="button" onClick={() => setErrorMessage('')} className="text-red-600 font-bold">
@@ -323,11 +438,68 @@ export default function ReminderPage() {
           </div>
         )}
 
+        {/* Preset Cepat Rekomendasi Gig Worker */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <span>⚡</span> Rekomendasi Cepat Gig Worker (Ojol & Kurir)
+            </h3>
+            <span className="text-[11px] text-slate-400">1-Klik Terapkan</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <button
+              type="button"
+              onClick={() =>
+                applyPreset(0, '10:00', '💧 Hidrasi Pagi (Minum 2 Gelas)', 'Cegah dehidrasi di jalanan terik.')
+              }
+              className="p-3 text-left rounded-xl border border-blue-100 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-300 transition group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-base">💧</span>
+                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">10:00</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-800 mt-2">Hidrasi Pagi</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">Minum 2 gelas air putih</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                applyPreset(1, '12:30', '☕ Rehat Siang & Peregangan', 'Parkir di tempat teduh dan rehat 15 menit.')
+              }
+              className="p-3 text-left rounded-xl border border-amber-100 bg-amber-50/50 hover:bg-amber-50 hover:border-amber-300 transition group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-base">☕</span>
+                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">12:30</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-800 mt-2">Rehat Siang</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">Rehat makan & istirahat mata</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                applyPreset(2, '15:30', '🧘 Peregangan Leher & Pinggang', 'Lakukan relaksasi otot setelah berkendara lama.')
+              }
+              className="p-3 text-left rounded-xl border border-emerald-100 bg-emerald-50/50 hover:bg-emerald-50 hover:border-emerald-300 transition group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-base">🧘</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">15:30</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-800 mt-2">Peregangan Sore</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">Relaksasi leher & pinggang</p>
+            </button>
+          </div>
+        </div>
+
         {/* Form Pembuatan Pengingat Baru (Expandable) */}
         {isFormOpen && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 animate-fadeIn transition-all">
             <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <span>➕</span> Buat Pengingat Baru
+              <span>➕</span> Buat Jadwal Pengingat Baru
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -373,7 +545,7 @@ export default function ReminderPage() {
                   </div>
                   {/* Preset Jam Cepat */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                    {['09:00', '12:00', '15:00', '18:00', '21:00'].map((preset) => (
+                    {['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'].map((preset) => (
                       <button
                         key={preset}
                         type="button"
@@ -416,7 +588,7 @@ export default function ReminderPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  placeholder="Tulis pesan pengingat untuk diri sendiri..."
+                  placeholder="Tulis pesan pengingat untuk ditampilkan di pop-up..."
                   maxLength={255}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-slate-800 dark:text-white dark:bg-slate-800"
                 />
@@ -471,16 +643,9 @@ export default function ReminderPage() {
               {/* Tombol Aksi Form */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
-                  type="button"
-                  onClick={() => setIsFormOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition"
-                >
-                  Batal
-                </button>
-                <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm transition disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm transition disabled:opacity-50 flex items-center gap-2"
                 >
                   {submitting ? (
                     <>
@@ -529,15 +694,8 @@ export default function ReminderPage() {
               <span className="text-4xl">📭</span>
               <h3 className="text-base font-semibold text-slate-800 mt-2">Belum Ada Pengingat</h3>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Anda belum memiliki jadwal pengingat aktif. Klik tombol "Tambah Pengingat" di atas untuk membuat pengingat pertama Anda.
+                Anda belum memiliki jadwal pengingat aktif. Gunakan rekomendasi di atas atau isi form untuk membuat pengingat pertama.
               </p>
-              <button
-                type="button"
-                onClick={() => setIsFormOpen(true)}
-                className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium shadow-sm transition"
-              >
-                + Tambah Pengingat Sekarang
-              </button>
             </div>
           ) : (
             <div className="space-y-3">
