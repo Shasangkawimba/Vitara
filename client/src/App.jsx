@@ -112,7 +112,8 @@ function App() {
   return (
     <Routes>
       {/* 1. Halaman Publik / Auth (Tanpa Layout Shell) */}
-      <Route path="/login" element={<AuthPage />} />
+      <Route path="/login" element={<AuthPage initialMode="login" />} />
+      <Route path="/register" element={<AuthPage initialMode="register" />} />
 
       {/* 2. Halaman Internal Aplikasi (Dibungkus Layout Shell: Navbar & Sidebar) */}
       <Route element={<Layout />}>

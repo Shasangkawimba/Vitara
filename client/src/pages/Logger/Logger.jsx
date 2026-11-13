@@ -328,38 +328,19 @@ export default function Logger() {
   }).format(new Date());
 
   return (
-    <div className="bg-surface font-sans text-text-main min-h-screen antialiased select-none pb-24">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-border-subtle shadow-xs">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <VitaraLogo className="w-8 h-8" showText={true} textClassName="text-base text-primary" />
-            <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-surface-muted text-text-soft border border-border-subtle uppercase">
-              {user?.occupation || "MITRA DRIVER"}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-surface-muted border border-border-subtle">
-            <span className="text-xs font-semibold text-text-main">{userName}</span>
-            <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-[15px]">person</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 pt-5 flex flex-col gap-5">
+    <div className="font-sans text-slate-800 flex flex-col antialiased">
+      {/* Main Content Area */}
+      <div className="w-full max-w-4xl mx-auto flex flex-col gap-5">
         {/* Banner Salam & Tanggal */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 border-b border-slate-100">
           <div>
-            <span className="text-xs font-semibold text-text-soft uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               {todayFormatted}
             </span>
-            <h1 className="font-display text-2xl font-extrabold text-text-main tracking-tight mt-0.5">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
               Halo, {userName}! 👋
             </h1>
-            <p className="text-xs text-text-soft mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Catat jam kerja dan keluhan fisik hari ini dalam waktu &lt;30 detik.
             </p>
           </div>
@@ -370,7 +351,7 @@ export default function Logger() {
               <span>Sedang Mengedit Catatan Log</span>
               <button
                 type="button"
-                onClick={handleResetForm}
+                onClick={handleCancelEdit}
                 className="underline font-bold ml-1 hover:text-amber-900"
               >
                 Batal
@@ -711,7 +692,7 @@ export default function Logger() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[20px]">history_toggle_drop</span>
+                <span className="material-symbols-outlined text-[20px]">history</span>
               </span>
               <div>
                 <h3 className="text-sm font-bold text-text-main">Riwayat Catatan Shift & Pemulihan</h3>
@@ -820,58 +801,7 @@ export default function Logger() {
             </div>
           )}
         </section>
-
-        {/* Footer */}
-        <footer className="mt-2 pt-4 pb-2 px-2 text-center border-t border-border-subtle">
-          <p className="text-xs text-text-soft font-medium tracking-tight">
-            © 2024 VITARA Driver Ergonomics & Health System
-          </p>
-          <div className="mt-1 text-[11px] text-text-soft font-normal flex justify-center items-center gap-2 flex-wrap">
-            <span className="hover:text-text-main transition-colors cursor-pointer">Panduan K3</span>
-            <span>•</span>
-            <span className="hover:text-text-main transition-colors cursor-pointer">Pusat Bantuan</span>
-            <span>•</span>
-            <span className="hover:text-text-main transition-colors cursor-pointer flex items-center gap-1 text-red-600 font-bold">
-              <span className="material-symbols-outlined text-[14px]">call</span>
-              Darurat Medis 119
-            </span>
-          </div>
-        </footer>
-      </main>
-
-      {/* Bottom Navigation Bar (PWA Mobile) */}
-      <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-border-subtle md:hidden shadow-lg">
-        <div className="flex justify-around items-center h-14 px-2 max-w-lg mx-auto">
-          <Link
-            to="/logger"
-            className="flex flex-col items-center justify-center flex-1 h-full text-primary font-bold transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">edit_calendar</span>
-            <span className="text-[10px] mt-0.5">Catat</span>
-          </Link>
-          <Link
-            to="/dashboard"
-            className="flex flex-col items-center justify-center flex-1 h-full text-text-soft hover:text-text-main font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">monitoring</span>
-            <span className="text-[10px] mt-0.5">Analisis</span>
-          </Link>
-          <Link
-            to="/chat"
-            className="flex flex-col items-center justify-center flex-1 h-full text-text-soft hover:text-text-main font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">stethoscope</span>
-            <span className="text-[10px] mt-0.5">Konsultasi</span>
-          </Link>
-          <Link
-            to="/finder"
-            className="flex flex-col items-center justify-center flex-1 h-full text-text-soft hover:text-text-main font-medium transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">local_hospital</span>
-            <span className="text-[10px] mt-0.5">Faskes</span>
-          </Link>
-        </div>
-      </nav>
+      </div>
     </div>
   );
 }

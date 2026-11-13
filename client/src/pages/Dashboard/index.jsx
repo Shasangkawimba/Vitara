@@ -2,11 +2,13 @@
 // client/src/pages/Dashboard/index.jsx
 // Dasbor Produktivitas vs Kesehatan (Occupational Health PWA)
 // Dirender sesuai rancangan Stitch AI "Dasbor Analisis Performa"
+// Mendukung integrasi P3 (Summary, Korelasi) & P2 (Risk Score, Weekly Insight)
 // ============================================================
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 import CorrelationChart from "./components/CorrelationChart";
+import AiInsightWidget from "./components/AiInsightWidget";
 
 const formatRupiah = (angka) => {
   if (angka === null || angka === undefined) return "Rp 0";
@@ -21,17 +23,22 @@ export const DashboardPage = () => {
   const [periode, setPeriode] = useState(7);
   const [summary, setSummary] = useState(null);
   const [chartData, setChartData] = useState([]);
+  const [riskScoreData, setRiskScoreData] = useState(null);
+  const [weeklyInsightData, setWeeklyInsightData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Ambil data dari backend (dengan fallback aman sesuai desain Stitch AI)
+  // Ambil data dari backend P3 & P2 (dengan fallback aman sesuai desain Stitch AI)
   const fetchData = async (days) => {
     try {
       setLoading(true);
-      const [resSummary, resCorr] = await Promise.allSettled([
+      const [resSummary, resCorr, resRisk, resInsight] = await Promise.allSettled([
         api.get(`/api/dashboard/summary?days=${days}`),
         api.get(`/api/dashboard/correlation?days=${days}`),
+        api.get("/api/ai/risk-score"),
+        api.get("/api/ai/weekly-insight"),
       ]);
 
+      // 1. Data Summary Dashboard (P3)
       if (resSummary.status === "fulfilled" && resSummary.value.data?.success) {
         setSummary(resSummary.value.data.data);
       } else {
@@ -46,6 +53,7 @@ export const DashboardPage = () => {
         });
       }
 
+      // 2. Data Grafik Korelasi (P3)
       if (resCorr.status === "fulfilled" && resCorr.value.data?.success) {
         setChartData(resCorr.value.data.data);
       } else {
@@ -59,8 +67,30 @@ export const DashboardPage = () => {
           { hari: "Min", jamKerja: 3.0, keluhan: 0, isPeak: false, heightPercent: 25 },
         ]);
       }
+
+      // 3. Data Risk Score AI (P2 - API_CONTRACT.md)
+      if (resRisk.status === "fulfilled" && resRisk.value.data?.success) {
+        setRiskScoreData(resRisk.value.data.data);
+      } else {
+        setRiskScoreData({
+          skor: 65,
+          level: "Risiko Sedang",
+          kepercayaan: "sedang",
+          saran: "Beban jam berkendara meningkat menjelang akhir pekan. Lakukan peregangan panggul berkala.",
+        });
+      }
+
+      // 4. Data Weekly Insight AI (P2 - API_CONTRACT.md)
+      if (resInsight.status === "fulfilled" && resInsight.value.data?.success) {
+        setWeeklyInsightData(resInsight.value.data.data);
+      } else {
+        setWeeklyInsightData({
+          ringkasan:
+            "Jam kerja Anda mencapai puncak di hari Jumat (9.5 jam) yang berkolerasi dengan timbulnya rasa pegal pada area pinggang bawah. Disarankan menambah waktu jeda 5-10 menit setiap 3 trip selesai dan menjaga posisi ergonomis jok motor.",
+        });
+      }
     } catch (e) {
-      console.warn("Menggunakan data Stitch AI");
+      console.warn("Menggunakan data fallback Stitch AI:", e);
     } finally {
       setLoading(false);
     }
@@ -69,6 +99,16 @@ export const DashboardPage = () => {
   useEffect(() => {
     fetchData(periode);
   }, [periode]);
+
+  // Evaluasi skor risiko aktif untuk KPI Card 3
+  const activeRiskScore = riskScoreData?.skor ?? summary?.riskScore ?? 65;
+  const activeRiskLevel =
+    riskScoreData?.level ||
+    (activeRiskScore >= 70
+      ? "Risiko Tinggi"
+      : activeRiskScore >= 40
+      ? "Risiko Sedang"
+      : "Risiko Rendah");
 
   return (
     <div className="space-y-6">
@@ -179,7 +219,7 @@ export const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Card 3: SKOR RISIKO KELELAHAN */}
+        {/* Card 3: SKOR RISIKO KELELAHAN (Terhubung dengan P2) */}
         <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -191,19 +231,37 @@ export const DashboardPage = () => {
           </div>
           <div className="my-3">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">65</span>
+              <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                {activeRiskScore}
+              </span>
               <span className="text-xs text-slate-400">/ 100</span>
             </div>
-            <div className="inline-flex items-center gap-1.5 mt-2 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-              <span className="font-semibold text-amber-700 text-[11px]">
-                Sedang - Waspada Kelelahan
+            <div
+              className={`inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full text-xs border ${
+                activeRiskScore >= 70
+                  ? "bg-rose-50 border-rose-200 text-rose-700"
+                  : activeRiskScore >= 40
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : "bg-emerald-50 border-emerald-200 text-emerald-700"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  activeRiskScore >= 70
+                    ? "bg-rose-500"
+                    : activeRiskScore >= 40
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+                }`}
+              ></span>
+              <span className="font-semibold text-[11px]">
+                {activeRiskLevel}
               </span>
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
             <span>Puncak Beban</span>
-            <span className="font-semibold text-slate-700">Jumat (9.5 jam)</span>
+            <span className="font-semibold text-slate-700">{summary?.peakDay || "Jumat (9.5 jam)"}</span>
           </div>
         </div>
 
@@ -376,6 +434,26 @@ export const DashboardPage = () => {
           </div>
         </div>
       </div>
+
+      {/* 3. Section Milestone Minggu 4: Widget AI Ergo-Insight & Risk Score (Integrasi P2) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[20px]">
+              psychology
+            </span>
+            <h2 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white uppercase">
+              EVALUASI KONDISI &amp; REKOMENDASI KESEHATAN
+            </h2>
+          </div>
+        </div>
+
+        <AiInsightWidget
+          riskScoreData={riskScoreData}
+          weeklyInsightData={weeklyInsightData}
+          loading={loading}
+        />
+      </section>
     </div>
   );
 };

@@ -35,7 +35,7 @@ if (!apiKey) {
 // Inisialisasi LangChain dengan model Gemini
 // ===
 const llm = new ChatGoogleGenerativeAI({
-  apiKey, // eksplisit agar tidak bergantung pada nama env tertentu
+  apiKey: apiKey || "dummy_api_key_placeholder", // fallback agar server tetap start saat key belum diset
   model: MODEL_NAME,
   temperature: 1.0, // WAJIB 1.0 untuk Gemini 3.0+ (0.7 bisa menurunkan reasoning / infinite loop)
   maxRetries: 1, // Gemini kadang 429/503 saat beban tinggi; 1 retry sudah cukup
