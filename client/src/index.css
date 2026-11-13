@@ -166,32 +166,25 @@
   color: #94a3b8 !important;
 }
 
-/* Pengecualian khusus untuk Card & Angka Skor Risiko Kelelahan agar di Dark Mode tetap berwarna amber dan teks angka tetap hitam */
-.dark .risk-score-card,
-.dark .risk-score-card * {
+/* Pengecualian khusus untuk Card & Angka Skor Risiko Kelelahan agar di Dark Mode tetap kontras dan nyaman dibaca */
+.dark .risk-score-card {
   color: inherit;
 }
 
-.dark .risk-score-badge {
-  color: #c2410c !important; /* Orange tua solid */
-  border-color: #f97316 !important;
-  background-color: #ffedd5 !important;
+.dark .risk-score-card .risk-score-label {
+  color: #cbd5e1 !important; /* Slate 300 - terang dan jelas */
 }
 
-.dark .risk-score-number {
-  color: #0f172a !important;
+.dark .risk-score-card .risk-score-number {
+  color: #f8fafc !important; /* Putih terang */
 }
 
-.dark .risk-score-label {
-  color: #334155 !important;
+.dark .risk-score-card .risk-score-sub {
+  color: #94a3b8 !important; /* Slate 400 - kontras jelas */
 }
 
-.dark .risk-score-sub {
-  color: #64748b !important;
-}
-
-.dark .risk-score-desc {
-  color: #334155 !important;
+.dark .risk-score-card .risk-score-desc {
+  color: #cbd5e1 !important; /* Slate 300 - teks pesan sangat terbaca */
 }
 
 .dark input,
