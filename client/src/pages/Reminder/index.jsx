@@ -51,8 +51,8 @@ const CATEGORIES = [
     icon: '⏰',
     defaultTitle: 'Pengingat Kesehatan',
     defaultNotes: '',
-    color: 'bg-slate-50 text-slate-700 border-slate-200',
-    activeColor: 'bg-slate-700 text-white border-slate-700',
+    color: 'bg-[#cce3ed] text-slate-800 border-[#b8d8e5]',
+    activeColor: 'bg-sky-500 text-white border-sky-600 font-bold shadow-md ring-2 ring-sky-400/50 scale-[1.02]',
   },
 ];
 
@@ -333,7 +333,7 @@ export default function ReminderPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Pilihan Kategori */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
                   Kategori Pengingat
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -358,7 +358,7 @@ export default function ReminderPage() {
 
               {/* Time Picker (Pilihan Waktu) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
                   Waktu Pengingat (Jam & Menit)
                 </label>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -368,7 +368,7 @@ export default function ReminderPage() {
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
                       required
-                      className="w-full text-2xl font-bold tracking-widest text-slate-800 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-center"
+                      className="w-full text-2xl font-bold tracking-widest text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-center"
                     />
                   </div>
                   {/* Preset Jam Cepat */}
@@ -393,7 +393,7 @@ export default function ReminderPage() {
 
               {/* Judul Pengingat */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
                   Judul Pengingat
                 </label>
                 <input
@@ -403,13 +403,13 @@ export default function ReminderPage() {
                   placeholder="Contoh: Istirahat & Minum Air"
                   required
                   maxLength={100}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-slate-800"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-slate-800 dark:text-white dark:bg-slate-800"
                 />
               </div>
 
               {/* Catatan / Pesan Pengingat */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider mb-2">
                   Pesan / Catatan Tambahan (Opsional)
                 </label>
                 <textarea
@@ -418,14 +418,14 @@ export default function ReminderPage() {
                   rows={2}
                   placeholder="Tulis pesan pengingat untuk diri sendiri..."
                   maxLength={255}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-slate-800"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-slate-800 dark:text-white dark:bg-slate-800"
                 />
               </div>
 
               {/* Pilihan Hari Pengulangan */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                     Ulangi Pada Hari
                   </label>
                   <div className="flex items-center gap-2 text-xs">

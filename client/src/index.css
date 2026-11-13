@@ -26,7 +26,7 @@
 }
 
 .dark header {
-  background-color: #0f172a !important;
+  background-color: rgba(15, 23, 42, 0.85) !important;
   border-color: #1e293b !important;
   color: #f8fafc !important;
 }
@@ -58,6 +58,7 @@
 
 .dark .text-slate-900,
 .dark .text-slate-800,
+.dark .text-slate-700,
 .dark .text-text-main {
   color: #f8fafc !important;
 }
@@ -125,25 +126,31 @@
   color: #ffffff !important;
 }
 
-/* Samakan background card / chip rekomendasi / container konsultasi menjadi warna navy sama dengan latar belakang (#0f172a / border #1e293b) */
+/* Penyesuaian khusus halaman Ergo Coach AI (Chat) saat Dark Mode:
+   Background kontainer utama, card, dan header chat menjadi warna abu gelap elegan (#1e293b / #334155 border) */
+.dark main:has([data-page="chat"]) {
+  background-color: #1e293b !important; /* Latar utama main sedikit abu gelap */
+  border-color: #334155 !important;
+}
+
 .dark [data-page="chat"] .bg-white,
 .dark [data-page="chat"] .bg-surface,
 .dark [data-page="chat"] .bg-surface\/95,
 .dark [data-page="chat"] .bg-surface-muted,
 .dark [data-page="chat"] button.rounded-full {
-  background-color: #0f172a !important;
-  border-color: #1e293b !important;
+  background-color: #1e293b !important; /* Warna abu gelap elegan */
+  border-color: #334155 !important;
   color: #f1f5f9 !important;
 }
 
 .dark [data-page="chat"] .border-border-subtle {
-  border-color: #1e293b !important;
+  border-color: #334155 !important;
 }
 
 .dark [data-page="chat"] input,
 .dark [data-page="chat"] textarea {
-  background-color: #0f172a !important;
-  border-color: #1e293b !important;
+  background-color: #0f172a !important; /* Kotak input kontras di atas latar abu */
+  border-color: #334155 !important;
   color: #ffffff !important;
 }
 
@@ -157,6 +164,34 @@
 .dark [data-page="chat"] .text-text-soft,
 .dark [data-page="chat"] .text-slate-500 {
   color: #94a3b8 !important;
+}
+
+/* Pengecualian khusus untuk Card & Angka Skor Risiko Kelelahan agar di Dark Mode tetap berwarna amber dan teks angka tetap hitam */
+.dark .risk-score-card,
+.dark .risk-score-card * {
+  color: inherit;
+}
+
+.dark .risk-score-badge {
+  color: #c2410c !important; /* Orange tua solid */
+  border-color: #f97316 !important;
+  background-color: #ffedd5 !important;
+}
+
+.dark .risk-score-number {
+  color: #0f172a !important;
+}
+
+.dark .risk-score-label {
+  color: #334155 !important;
+}
+
+.dark .risk-score-sub {
+  color: #64748b !important;
+}
+
+.dark .risk-score-desc {
+  color: #334155 !important;
 }
 
 .dark input,

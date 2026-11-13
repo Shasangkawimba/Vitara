@@ -97,45 +97,23 @@ const MENU_ITEMS = [
 export const Sidebar = ({ isOpen, onClose }) => {
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Floating Rounded Sidebar Container */}
+      {/* ========================================================
+          TAMPILAN 1: DESKTOP & LAPTOP (Sesuai Mockup Sidebar Kiri)
+          Hidden di mobile (hidden lg:flex), tetap utuh tidak dirubah
+         ======================================================== */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-in-out lg:static lg:z-0 lg:rounded-2xl lg:border lg:border-slate-200/80 dark:lg:border-slate-800 lg:shadow-xs ${
+        className={`hidden lg:flex flex-col bg-white dark:bg-slate-900 transition-all duration-300 ease-in-out lg:static lg:z-0 lg:rounded-2xl lg:border lg:border-slate-200/80 dark:lg:border-slate-800 lg:shadow-xs ${
           isOpen
-            ? "w-60 p-5 translate-x-0 shadow-xl lg:shadow-xs"
-            : "-translate-x-full lg:translate-x-0 lg:w-20 lg:p-3.5 lg:items-center"
+            ? "w-60 p-5 shadow-xs"
+            : "w-20 p-3.5 items-center"
         }`}
       >
         {/* ========================================================
-            KONDISI 1: SIDEBAR TERBUKA (FULL DENGAN TEKS & WIDGET)
+            KONDISI 1A: DESKTOP TERBUKA (FULL DENGAN TEKS & WIDGET)
            ======================================================== */}
         {isOpen ? (
           <div className="flex h-full w-full flex-col justify-between">
             <div>
-              {/* Header Bagian Atas di Mobile (Tombol Tutup) */}
-              <div className="flex items-center justify-between pb-3 lg:hidden">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Menu
-                </span>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
               {/* Section Title: MAIN MENU */}
               <div className="pb-3 border-b border-slate-100 mb-3">
                 <span className="text-[11px] font-bold tracking-wider uppercase text-slate-400">
@@ -228,7 +206,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           </div>
         ) : (
           /* ========================================================
-             KONDISI 2: SIDEBAR DITUTUP (MINI SIDEBAR PERSIS GAMBAR)
+             KONDISI 1B: DESKTOP DITUTUP (MINI SIDEBAR PERSIS GAMBAR)
              Hanya menampilkan ikon-ikon menu secara vertikal di tengah
              ======================================================== */
           <div className="flex h-full w-full flex-col items-center pt-2">
@@ -257,6 +235,44 @@ export const Sidebar = ({ isOpen, onClose }) => {
           </div>
         )}
       </aside>
+
+      {/* ========================================================
+          TAMPILAN 2: MOBILE BOTTOM NAVIGATION (Navigasi Bawah di Ponsel)
+          Hanya muncul di mobile (flex lg:hidden) tetap memiliki 5 menu
+          Dirancang muat sempurna tanpa terpotong di layar 320px - 375px
+         ======================================================== */}
+      <nav
+        aria-label="Navigasi Bawah Mobile"
+        className="fixed bottom-0 left-0 right-0 z-50 flex lg:hidden items-center justify-between border-t border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-1 py-1.5 shadow-lg w-full overflow-hidden"
+      >
+        {MENU_ITEMS.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) =>
+              `flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 px-0.5 transition-all min-w-0 ${
+                isActive
+                  ? "bg-[#cce3ed] dark:bg-slate-800 text-slate-900 dark:text-teal-400 font-bold"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <span className={`shrink-0 ${isActive ? "text-slate-900 dark:text-teal-400" : "text-slate-500 dark:text-slate-400"}`}>
+                  {/* Skala ikon responsif agar muat di layar sangat sempit (320px) */}
+                  <span className="[&>svg]:w-4 [&>svg]:h-4 xs:[&>svg]:w-5 xs:[&>svg]:h-5 block">
+                    {item.icon}
+                  </span>
+                </span>
+                <span className="text-[9px] xs:text-[10px] tracking-tighter leading-tight truncate text-center w-full block">
+                  {item.label}
+                </span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
     </>
   );
 };

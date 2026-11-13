@@ -8,6 +8,21 @@ import { Link, useNavigate } from "react-router-dom";
 export const Navbar = () => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Deteksi scroll halaman
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Inisialisasi tema dari localStorage atau preferensi sistem
   const [isDark, setIsDark] = useState(() => {
@@ -53,30 +68,36 @@ export const Navbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 sm:px-8 transition-colors duration-200">
+    <header
+      className={`sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b px-4 sm:px-6 lg:px-8 transition-all duration-300 backdrop-blur-md ${
+        isScrolled
+          ? "bg-white/85 dark:bg-slate-900/85 border-slate-200/80 dark:border-slate-800 shadow-sm"
+          : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+      }`}
+    >
       {/* Kiri: Logo VITARA + DRIVER HEALTH SYSTEM */}
-      <Link to="/dashboard" className="flex items-center gap-3 group">
+      <Link to="/dashboard" className="flex items-center gap-2.5 sm:gap-3 group">
         {/* Logo Gambar Asli VITARA */}
         <div className="flex items-center justify-center">
           <img
             src="/vitara-logo.png"
             alt="Logo Vitara"
-            className="h-9 w-9 object-contain"
+            className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
           />
         </div>
 
-        <div className="flex items-baseline gap-2">
-          <span className="text-xl font-black tracking-tight text-slate-800 dark:text-white">
+        <div className="flex items-baseline gap-1.5 sm:gap-2">
+          <span className="text-lg sm:text-xl font-black tracking-tight text-slate-800 dark:text-white">
             VITARA
           </span>
-          <span className="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-400 uppercase">
+          <span className="hidden xs:inline-block text-[9px] sm:text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-400 uppercase">
             DRIVER HEALTH SYSTEM
           </span>
         </div>
       </Link>
 
       {/* Kanan: Theme Toggle dan Profil User */}
-      <div className="flex items-center gap-5 sm:gap-6">
+      <div className="flex items-center gap-2.5 sm:gap-6">
         {/* Icon Dark/Light Mode (Moon saat terang, Sun saat gelap) */}
         <button
           type="button"
@@ -195,16 +216,16 @@ export const Navbar = () => {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 to="/login"
-                className="rounded-xl bg-[#cce3ed] hover:bg-[#b8d8e5] text-slate-800 px-3.5 py-1.5 text-xs font-bold transition shadow-2xs"
+                className="rounded-xl bg-[#cce3ed] hover:bg-[#b8d8e5] text-slate-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold transition shadow-2xs whitespace-nowrap"
               >
                 Masuk
               </Link>
               <Link
                 to="/register"
-                className="hidden sm:inline-block rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 text-xs font-medium transition"
+                className="inline-block rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium transition whitespace-nowrap"
               >
                 Daftar
               </Link>
