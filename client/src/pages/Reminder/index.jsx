@@ -71,7 +71,7 @@ export default function ReminderPage() {
   const [title, setTitle] = useState(CATEGORIES[0].defaultTitle);
   const [notes, setNotes] = useState(CATEGORIES[0].defaultNotes);
   const [selectedDays, setSelectedDays] = useState([...DAYS_LIST]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(true);
 
   // Status Web Notification
   const [notificationPermission, setNotificationPermission] = useState(
