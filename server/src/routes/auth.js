@@ -36,7 +36,7 @@ router.get("/", (_req, res) => {
 router.get("/login", (_req, res) => {
   return res.status(405).json({
     success: false,
-    error: "Method GET tidak didukung untuk login. Silakan kirimkan request POST dengan body JSON: { phone, password }.",
+    error: "Method GET tidak didukung untuk login. Silakan kirimkan request POST dengan body JSON: { username, password }.",
   });
 });
 
@@ -69,8 +69,32 @@ function normalizePhone(phone) {
   return cleaned;
 }
 
-// Skema Validasi Registrasi dengan Zod (Minggu 4: normalisasi telepon)
+/**
+ * Normalisasi username: trim + huruf kecil.
+ * Karakter yang diizinkan (huruf kecil, angka, underscore)
+ * divalidasi ketat oleh skema Zod di bawah.
+ * @param {string} username - Username mentah
+ * @returns {string} Username ternormalisasi
+ */
+function normalizeUsername(username) {
+  return (username || "").trim().toLowerCase();
+}
+
+// Skema Validasi Registrasi dengan Zod (Minggu 5: username wajib, unik)
 const registerSchema = z.object({
+  username: z
+    .string({ required_error: "Username wajib diisi." })
+    .trim()
+    .transform(normalizeUsername)
+    .pipe(
+      z.string()
+        .min(3, "Username minimal 3 karakter.")
+        .max(20, "Username maksimal 20 karakter.")
+        .regex(
+          /^[a-z0-9_]+$/,
+          "Username hanya boleh huruf kecil, angka, dan underscore."
+        )
+    ),
   phone: z
     .string({ required_error: "Nomor telepon wajib diisi." })
     .trim()
@@ -96,17 +120,29 @@ const registerSchema = z.object({
     .optional(),
 });
 
-// Skema Validasi Login dengan Zod (Minggu 4: normalisasi telepon)
-const loginSchema = z.object({
-  phone: z
-    .string({ required_error: "Nomor telepon wajib diisi." })
-    .trim()
-    .transform(normalizePhone)
-    .pipe(z.string().min(1, "Nomor telepon wajib diisi.")),
-  password: z
-    .string({ required_error: "Kata sandi wajib diisi." })
-    .min(1, "Kata sandi wajib diisi."),
-});
+// Skema Validasi Login: username (untuk akun baru) atau phone
+// (alias kompatibilitas mundur untuk akun lama yang belum punya username).
+const loginSchema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .transform(normalizeUsername)
+      .pipe(z.string().min(1, "Username wajib diisi."))
+      .optional(),
+    phone: z
+      .string()
+      .trim()
+      .transform(normalizePhone)
+      .pipe(z.string().min(1))
+      .optional(),
+    password: z
+      .string({ required_error: "Kata sandi wajib diisi." })
+      .min(1, "Kata sandi wajib diisi."),
+  })
+  .refine((d) => d.username || d.phone, {
+    message: "Username wajib diisi.",
+  });
 
 /**
  * POST /api/auth/register

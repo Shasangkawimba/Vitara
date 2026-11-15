@@ -1,17 +1,16 @@
 // ============================================================
 // client/src/pages/Logger/Logger.jsx
-// Halaman Pencatatan Kesehatan Kerja Harian (Work-Health Logger).
-// Mengacu presisi pada rancangan Stitch AI "VITARA Occupational Health PWA UI/UX".
-// Fitur: Form Input, Quick Log (<30 dtk), Voice Input (P4), Riwayat CRUD Log.
-// Dikelola oleh P1 (Auth & Logger).
+// Work-Health Logger — tata letak dibangun ulang mengikuti layar
+// Stitch "Work-Health Logger" (mobile + desktop):
+//   • Hero pine, Timeline mingguan, kartu status hari ini
+//   • Form durasi/pendapatan/kondisi fisik dengan pill & chip
+//   • Riwayat CRUD, Quick Log, dan input suara tetap utuh
 // ============================================================
-import React, { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
-import VitaraLogo from "../../components/VitaraLogo";
 import VoiceInput from "../../components/VoiceInput";
 
-// Daftar keluhan fisik sesuai rancangan desain Stitch dan dialek/slang pengemudi
 const SYMPTOM_OPTIONS = [
   {
     id: "Sakit Pinggang",
@@ -58,18 +57,17 @@ const SYMPTOM_OPTIONS = [
 ];
 
 const HOUR_PRESETS = [
-  { hours: 0, label: "0 Jam", badge: "Libur" },
-  { hours: 4, label: "4 Jam", badge: "Ringan" },
-  { hours: 8, label: "8 Jam", badge: "Standar" },
-  { hours: 10, label: "10 Jam", badge: "Padat" },
-  { hours: 12, label: "12+ Jam", badge: "Lembur" },
+  { hours: 0, label: "Libur" },
+  { hours: 4, label: "4 Jam" },
+  { hours: 8, label: "8 Jam" },
+  { hours: 10, label: "10 Jam" },
+  { hours: 12, label: "12+ Jam" },
 ];
 
 export default function Logger() {
   const navigate = useNavigate();
 
-  // Data Pengguna Aktif
-  const [user, setUser] = useState(() => {
+  const [user] = useState(() => {
     try {
       const stored = localStorage.getItem("user");
       return stored ? JSON.parse(stored) : null;
@@ -78,37 +76,34 @@ export default function Logger() {
     }
   });
 
-  // State Form Input
-  const [editingLogId, setEditingLogId] = useState(null); // Jika sedang edit
+  const [editingLogId, setEditingLogId] = useState(null);
+  // Hari terpilih pada strip Timeline (null → default hari ini).
+  const [kunciTerpilih, setKunciTerpilih] = useState(null);
   const [workHours, setWorkHours] = useState(8);
   const [customHours, setCustomHours] = useState("");
+  const [halamanRiwayat, setHalamanRiwayat] = useState(1);
   const [income, setIncome] = useState("250.000");
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [isHealthy, setIsHealthy] = useState(true);
 
-  // State Feedback & Histori Log
   const [isLoading, setIsLoading] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ type: "", message: "" });
   const [recentLogs, setRecentLogs] = useState([]);
   const [latestLog, setLatestLog] = useState(null);
   const [voiceNotice, setVoiceNotice] = useState("");
 
-  // Ambil daftar riwayat log dari backend
   const fetchLogs = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-
       const res = await api.get("/api/logs");
       if (res.data?.success) {
         const logs = res.data.data || [];
         setRecentLogs(logs);
-        if (logs.length > 0) {
-          setLatestLog(logs[0]);
-        }
+        if (logs.length > 0) setLatestLog(logs[0]);
       }
     } catch {
-      // Abaikan jika server belum terhubung
+      // Abaikan jika server belum terhubung.
     }
   };
 
@@ -116,7 +111,6 @@ export default function Logger() {
     fetchLogs();
   }, []);
 
-  // Hitung rata-rata pendapatan per jam secara dinamis
   const incomePerHour = useMemo(() => {
     const rawIncome = parseInt(income.replace(/\D/g, ""), 10) || 0;
     const effectiveHours = customHours ? parseInt(customHours, 10) || 1 : workHours;
@@ -124,47 +118,50 @@ export default function Logger() {
     return Math.round(rawIncome / effectiveHours);
   }, [income, workHours, customHours]);
 
-  // Handler Pilihan Gejala
   const toggleSymptom = (symptomId) => {
     setIsHealthy(false);
     setSelectedSymptoms((prev) =>
-      prev.includes(symptomId) ? prev.filter((s) => s !== symptomId) : [...prev, symptomId]
+      prev.includes(symptomId)
+        ? prev.filter((s) => s !== symptomId)
+        : [...prev, symptomId]
     );
   };
 
-  // Handler Bebas Keluhan
   const toggleHealthy = () => {
     setIsHealthy(true);
     setSelectedSymptoms([]);
   };
 
-  // Handler Input Penghasilan Format Ribuan
   const handleIncomeChange = (e) => {
     const rawVal = e.target.value.replace(/\D/g, "");
     if (!rawVal) {
       setIncome("");
       return;
     }
-    const formatted = new Intl.NumberFormat("id-ID").format(parseInt(rawVal, 10));
-    setIncome(formatted);
+    setIncome(new Intl.NumberFormat("id-ID").format(parseInt(rawVal, 10)));
   };
 
-  // Handler Callback Voice Input dari komponen P4
   const handleVoiceResult = (transcript) => {
     const lower = transcript.toLowerCase();
     setVoiceNotice(`Mendengar: "${transcript}"`);
 
-    // Deteksi keluhan dari transkrip suara
     let detectedCount = 0;
     SYMPTOM_OPTIONS.forEach((item) => {
       if (item.keywords.some((kw) => lower.includes(kw))) {
-        setSelectedSymptoms((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]));
+        setSelectedSymptoms((prev) =>
+          prev.includes(item.id) ? prev : [...prev, item.id]
+        );
         setIsHealthy(false);
         detectedCount++;
       }
     });
 
-    if (lower.includes("sehat") || lower.includes("bugar") || lower.includes("aman") || lower.includes("tidak ada keluhan")) {
+    if (
+      lower.includes("sehat") ||
+      lower.includes("bugar") ||
+      lower.includes("aman") ||
+      lower.includes("tidak ada keluhan")
+    ) {
       setIsHealthy(true);
       setSelectedSymptoms([]);
     } else if (detectedCount === 0) {
@@ -175,9 +172,9 @@ export default function Logger() {
     }
   };
 
-  // Reset Form
   const handleResetForm = () => {
     setEditingLogId(null);
+    setKunciTerpilih(null);
     setWorkHours(8);
     setCustomHours("");
     setIncome("250.000");
@@ -187,7 +184,6 @@ export default function Logger() {
     setVoiceNotice("");
   };
 
-  // Muat data log ke dalam form untuk di-edit (Update)
   const handleEditClick = (log) => {
     setEditingLogId(log.id);
     setWorkHours(log.workHours);
@@ -203,7 +199,6 @@ export default function Logger() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Hapus log dari riwayat (Delete)
   const handleDeleteClick = async (logId) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus catatan log ini?")) return;
     try {
@@ -223,7 +218,6 @@ export default function Logger() {
     }
   };
 
-  // Simpan / Perbarui Log (Create / Update)
   const handleSaveLog = async (e) => {
     if (e) e.preventDefault();
     setAlertInfo({ type: "", message: "" });
@@ -244,14 +238,12 @@ export default function Logger() {
       setIsLoading(true);
       let res;
       if (editingLogId) {
-        // Mode Update (PUT)
         res = await api.put(`/api/logs/${editingLogId}`, {
           workHours: finalHours,
           income: cleanIncome,
           symptoms: finalSymptoms,
         });
       } else {
-        // Mode Create (POST)
         res = await api.post("/api/logs", {
           workHours: finalHours,
           income: cleanIncome,
@@ -263,8 +255,8 @@ export default function Logger() {
         setAlertInfo({
           type: "success",
           message: editingLogId
-            ? "Catatan log berhasil diperbarui! ✨"
-            : "Catatan shift dan kondisi kesehatan berhasil disimpan! 👍",
+            ? "Catatan log berhasil diperbarui."
+            : "Catatan shift dan kondisi kesehatan berhasil disimpan.",
         });
         handleResetForm();
         fetchLogs();
@@ -292,17 +284,13 @@ export default function Logger() {
     }
   };
 
-  // Quick Log: Duplikasi Log Kemarin (<30 detik)
   const handleQuickLog = async () => {
     setAlertInfo({ type: "", message: "" });
     try {
       setIsLoading(true);
       const res = await api.post("/api/logs/quick-log");
       if (res.data?.success) {
-        setAlertInfo({
-          type: "success",
-          message: "Log kemarin berhasil disalin secara instan! ⚡",
-        });
+        setAlertInfo({ type: "success", message: "Log kemarin berhasil disalin." });
         fetchLogs();
       }
     } catch (err) {
@@ -327,481 +315,705 @@ export default function Logger() {
     year: "numeric",
   }).format(new Date());
 
+  const stripMingguan = useMemo(() => {
+    const hariIni = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(hariIni);
+      d.setDate(hariIni.getDate() - (6 - i));
+      return {
+        tanggal: d,
+        inisial: new Intl.DateTimeFormat("id-ID", { weekday: "narrow" }).format(d),
+        isToday: i === 6,
+        adaLog: recentLogs.some(
+          (log) => new Date(log.createdAt).toDateString() === d.toDateString()
+        ),
+      };
+    });
+  }, [recentLogs]);
+
+  // Navigator strip: hari aktif + aksi ketuk hari (edit bila ada log,
+  // reset form + pesan jujur bila kosong — catatan baru selalu hari ini).
+  const kunciHariIni = new Date().toDateString();
+  const kunciAktif = kunciTerpilih ?? kunciHariIni;
+
+  const handlePilihHari = (hari) => {
+    const kunci = hari.tanggal.toDateString();
+    setKunciTerpilih(kunci);
+    const log = recentLogs.find(
+      (l) => new Date(l.createdAt).toDateString() === kunci
+    );
+    if (log) {
+      handleEditClick(log);
+      return;
+    }
+    handleResetForm();
+    const label = new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }).format(hari.tanggal);
+    setAlertInfo({
+      type: "info",
+      message:
+        kunci === kunciHariIni
+          ? "Belum ada catatan hari ini — isi form untuk mencatat shift Anda."
+          : `Belum ada catatan pada ${label} — catatan baru selalu tersimpan untuk hari ini.`,
+    });
+  };
+
+  const logHariIni = recentLogs.find(
+    (log) => new Date(log.createdAt).toDateString() === new Date().toDateString()
+  );
+
+  const bulanLabel = new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
+  const tambahPendapatan = (tambahan) => {
+    const sekarang = parseInt(income.replace(/\D/g, ""), 10) || 0;
+    setIncome(new Intl.NumberFormat("id-ID").format(sekarang + tambahan));
+  };
+
+  const waktuCatat = logHariIni
+    ? new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(
+        new Date(logHariIni.createdAt)
+      ) + " WIB"
+    : "Belum tercatat";
+
+  const judulShift = logHariIni
+    ? `Operasional ${logHariIni.workHours} Jam`
+    : "Catat shift hari ini";
+
+  const detailShift = logHariIni
+    ? `Rp ${Number(logHariIni.income || 0).toLocaleString("id-ID")} • ${
+        logHariIni.symptoms?.length > 0
+          ? logHariIni.symptoms.join(", ")
+          : "Bebas keluhan"
+      }`
+    : latestLog
+    ? "Isi form di bawah, atau salin catatan kemarin."
+    : "Belum ada catatan sebelumnya.";
+
   return (
-    <div className="font-sans text-slate-800 flex flex-col antialiased">
-      {/* Main Content Area */}
-      <div className="w-full max-w-4xl mx-auto flex flex-col gap-5">
-        {/* Banner Salam & Tanggal */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-1 border-b border-slate-100">
+    <div className="w-full">
+      {/* Hero judul di atas gradien pine */}
+      <section className="mx-auto w-full max-w-7xl px-5 pb-6 pt-6 text-white lg:px-12 lg:pt-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
               {todayFormatted}
             </span>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
-              Halo, {userName}! 👋
+            <h1 className="mt-2 text-[27px] font-bold leading-[1.25] tracking-tight lg:text-[34px]">
+              Log Kerja &amp; Kebugaran
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Catat jam kerja dan keluhan fisik hari ini dalam waktu &lt;30 detik.
+            <p className="mt-1.5 max-w-xl text-sm text-white/70 font-body">
+              Halo {userName}, presensi ritme kerja harian dan evaluasi titik
+              ketegangan ergonomis.
             </p>
           </div>
 
           {editingLogId && (
-            <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-xl text-xs font-medium">
+            <span className="glass-pill inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[11px] font-semibold text-white">
               <span className="material-symbols-outlined text-[16px]">edit</span>
-              <span>Sedang Mengedit Catatan Log</span>
+              Mengedit catatan
               <button
                 type="button"
-                onClick={handleCancelEdit}
-                className="underline font-bold ml-1 hover:text-amber-900"
+                onClick={handleResetForm}
+                className="underline decoration-white/40 underline-offset-2"
               >
                 Batal
               </button>
-            </div>
+            </span>
           )}
         </div>
+      </section>
 
-        {/* Notifikasi Alert */}
+      <main className="mx-auto w-full max-w-7xl px-5 pb-14 lg:px-12">
+        {/* Notifikasi alert — kartu solid agar tetap terbaca di atas hero gelap */}
         {alertInfo.message && (
           <div
-            className={`p-4 rounded-2xl border text-xs font-medium flex items-center gap-3 shadow-xs ${
-              alertInfo.type === "success"
-                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                : alertInfo.type === "info"
-                ? "bg-cyan-50 border-cyan-200 text-cyan-800"
-                : "bg-red-50 border-red-200 text-red-800"
+            className={`mb-5 flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-card ${
+              alertInfo.type === "error"
+                ? "border-red-200 bg-red-50"
+                : "border-border-subtle bg-surface-card"
             }`}
+            role="status"
           >
-            <span className="material-symbols-outlined text-[20px] shrink-0">
-              {alertInfo.type === "success"
-                ? "check_circle"
-                : alertInfo.type === "info"
-                ? "info"
-                : "error"}
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                alertInfo.type === "success"
+                  ? "bg-primary/10 text-primary"
+                  : alertInfo.type === "info"
+                  ? "bg-surface-subtle text-text-muted"
+                  : "bg-red-100 text-red-600"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {alertInfo.type === "success"
+                  ? "check_circle"
+                  : alertInfo.type === "info"
+                  ? "info"
+                  : "error"}
+              </span>
             </span>
-            <span className="flex-1">{alertInfo.message}</span>
+            <p
+              className={`min-w-0 flex-1 pt-1 text-[13px] font-semibold leading-snug ${
+                alertInfo.type === "error" ? "text-red-800" : "text-text-primary"
+              }`}
+            >
+              {alertInfo.message}
+            </p>
             <button
               type="button"
               onClick={() => setAlertInfo({ type: "", message: "" })}
-              className="text-text-soft hover:text-text-main"
+              className="shrink-0 rounded-full p-1 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-primary"
+              aria-label="Tutup pesan"
             >
-              <span className="material-symbols-outlined text-[16px]">close</span>
+              <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
         )}
 
-        {/* Tombol Quick Log ("Gunakan Data Kemarin") */}
-        <button
-          type="button"
-          onClick={handleQuickLog}
-          disabled={isLoading}
-          className="w-full relative overflow-hidden bg-gradient-to-r from-primary/10 via-primary/5 to-white hover:bg-primary/15 active:scale-[0.99] border border-primary/25 rounded-2xl p-4 sm:p-5 text-left transition-all flex items-center justify-between group shadow-xs cursor-pointer disabled:opacity-60"
-        >
-          <div className="flex items-center justify-between w-full relative z-10">
-            <div className="flex-1 pr-4">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-white uppercase tracking-wider inline-flex items-center gap-1 shadow-xs">
-                  <span className="material-symbols-outlined text-[13px]">bolt</span>
-                  Fitur Cepat &lt;30 Detik
-                </span>
-                <span className="text-[11px] text-text-soft font-semibold hidden sm:inline">
-                  • Salin Log Kemarin
-                </span>
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-text-main font-display leading-tight">
-                Sama Seperti Kemarin
-              </h2>
-              <p className="text-xs text-text-soft mt-1 leading-relaxed">
-                {latestLog
-                  ? `${latestLog.workHours} Jam Kemudi • Rp ${Number(latestLog.income || 0).toLocaleString("id-ID")} • `
-                  : "8 Jam Kemudi • Rp 250.000 • "}
-                <span className="text-primary font-bold">
-                  {latestLog && latestLog.symptoms?.length > 0
-                    ? latestLog.symptoms.join(", ")
-                    : "Bebas Keluhan & Bugar"}
-                </span>
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105 shadow-inner">
-              <span className="material-symbols-outlined text-[26px]">history</span>
-            </div>
-          </div>
-        </button>
-
-        {/* Divider Form Mandiri */}
-        <div className="flex items-center gap-3 my-1">
-          <div className="flex-1 h-px bg-border-subtle"></div>
-          <span className="text-[11px] font-bold text-text-soft uppercase tracking-wider">
-            Atau Isi Detail Mandiri
-          </span>
-          <div className="flex-1 h-px bg-border-subtle"></div>
-        </div>
-
-        {/* Grid Dual Column di Desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* KOLOM KIRI: Operasional Shift (Langkah 1/2) */}
-          <div className="flex flex-col gap-4">
-            {/* Card Jam Kerja */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-border-subtle shadow-xs flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[18px]">schedule</span>
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-bold text-text-main">Operasional Shift</h3>
-                    <p className="text-[11px] text-text-soft">Langkah 1/2: Durasi Kemudi Hari Ini</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  {workHours} Jam Aktif
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
+          {/* KIRI: timeline, status hari ini, riwayat sesi (urut sesuai DOM). */}
+          <div className="flex flex-col gap-5 lg:col-span-5 lg:gap-6">
+            <section className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
+                  Timeline
+                </h2>
+                <span className="text-[11px] font-medium text-text-muted">
+                  {bulanLabel}
                 </span>
               </div>
 
-              {/* Preset Tombol Jam */}
-              <div className="grid grid-cols-4 gap-2 pt-1">
-                {HOUR_PRESETS.map((preset) => {
-                  const isSelected = workHours === preset.hours && !customHours;
+              <div className="grid grid-cols-7 items-start text-center">
+                {stripMingguan.map((hari) => {
+                  const kunci = hari.tanggal.toDateString();
+                  const aktif = kunci === kunciAktif;
+                  const label = new Intl.DateTimeFormat("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  }).format(hari.tanggal);
                   return (
                     <button
-                      key={preset.hours}
                       type="button"
-                      onClick={() => {
-                        setWorkHours(preset.hours);
-                        setCustomHours("");
-                      }}
-                      className={`h-14 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-primary border-2 border-primary text-white shadow-xs"
-                          : "border border-border-subtle bg-surface-muted text-text-muted hover:border-primary/40"
-                      }`}
+                      key={hari.tanggal.toISOString()}
+                      onClick={() => handlePilihHari(hari)}
+                      aria-pressed={aktif}
+                      aria-label={
+                        hari.adaLog
+                          ? `Edit catatan ${label}`
+                          : `${label}, belum ada catatan`
+                      }
+                      title={
+                        hari.adaLog
+                          ? `Edit catatan ${label}`
+                          : `${label} — belum ada catatan`
+                      }
+                      className="flex flex-col items-center gap-1.5 rounded-2xl px-0.5 py-1.5 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
-                      <span className="text-xs font-bold">{preset.label}</span>
                       <span
-                        className={`text-[10px] mt-0.5 ${
-                          isSelected ? "text-cyan-200" : "text-text-soft"
+                        className={`text-[11px] font-medium ${
+                          hari.isToday ? "font-bold text-primary" : "text-text-muted"
                         }`}
                       >
-                        {preset.badge}
+                        {hari.inisial}
+                      </span>
+                      <span
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-xs lg:h-9 lg:w-9 ${
+                          hari.isToday
+                            ? "bg-primary font-bold text-white shadow-xs"
+                            : hari.adaLog
+                            ? "bg-surface-subtle font-semibold text-primary"
+                            : "font-medium text-text-muted"
+                        } ${
+                          aktif
+                            ? "ring-2 ring-primary ring-offset-2 ring-offset-surface-card"
+                            : ""
+                        }`}
+                      >
+                        {hari.tanggal.getDate()}
+                      </span>
+                      <span className="flex h-1 items-center gap-1">
+                        {hari.isToday ? (
+                          <>
+                            <span className="h-1 w-1 rounded-full bg-primary" />
+                            <span className="h-1 w-1 rounded-full bg-primary" />
+                          </>
+                        ) : hari.adaLog ? (
+                          <span className="h-1 w-1 rounded-full bg-accent-mint" />
+                        ) : null}
                       </span>
                     </button>
                   );
                 })}
               </div>
+              <p className="mt-3 text-center text-[11px] leading-snug text-text-muted">
+                Ketuk hari untuk melihat / memperbaiki catatan.
+              </p>
+            </section>
 
-              {/* Input Jam Kustom */}
-              <div className="pt-1 flex items-center gap-2 text-xs text-text-soft">
-                <span>Atau masukkan durasi kustom:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="24"
-                  value={customHours}
-                  onChange={(e) => {
-                    setCustomHours(e.target.value);
-                    if (e.target.value) setWorkHours(parseInt(e.target.value, 10));
-                  }}
-                  placeholder="Misal: 6"
-                  className="w-20 px-2.5 py-1.5 rounded-lg border border-border-subtle bg-surface-muted text-xs font-bold text-text-main focus:outline-none focus:border-primary"
-                />
-                <span>Jam</span>
-              </div>
-            </div>
-
-            {/* Card Pendapatan Harian */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-border-subtle shadow-xs flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[18px]">payments</span>
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-bold text-text-main">Penghasilan Bersih (Rp)</h3>
-                    <p className="text-[11px] text-text-soft">Estimasi setelah potongan komisi (opsional)</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative flex items-center mt-1">
-                <span className="absolute left-3.5 text-sm font-bold text-text-soft pointer-events-none">
-                  Rp
+            {/* Kartu status hari ini */}
+            <section className="order-2 relative overflow-hidden rounded-4xl bg-primary p-5 text-white shadow-hero lg:order-none lg:p-6">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent-mint/15 blur-3xl"
+              />
+              <div className="relative flex items-center justify-between">
+                <span className="rounded-full border border-white/10 bg-white/10 px-3.5 py-1 text-[12px] font-medium text-white/90">
+                  Hari Ini
                 </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={income}
-                  onChange={handleIncomeChange}
-                  placeholder="Contoh: 250.000"
-                  className="w-full h-12 pl-11 pr-4 bg-surface-muted border border-border-subtle focus:border-primary focus:ring-1 focus:ring-primary rounded-xl text-sm font-bold text-text-main placeholder-slate-400 focus:outline-none"
-                />
-              </div>
-
-              {/* Rata-rata pendapatan per jam (Kalkulasi dinamis dari desain Stitch) */}
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 text-text-soft">
-                  <span className="material-symbols-outlined text-[17px] text-primary">insights</span>
-                  <span>Rata-rata Pendapatan</span>
-                </div>
-                <span className="font-bold text-primary font-display">
-                  Rp {incomePerHour.toLocaleString("id-ID")} / Jam
+                <span className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">
+                  <span className="material-symbols-outlined text-[15px]">
+                    schedule
+                  </span>
+                  {waktuCatat}
                 </span>
               </div>
-            </div>
-          </div>
 
-          {/* KOLOM KANAN: Kondisi Fisik & Keluhan Otot (Langkah 2/2) */}
-          <div className="flex flex-col gap-4">
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-border-subtle shadow-xs flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[18px]">cardiology</span>
+              <div className="relative mt-5 flex items-center gap-3.5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
+                  <span className="material-symbols-outlined text-[24px] text-accent-mint">
+                    {logHariIni ? "check_circle" : "assignment"}
                   </span>
-                  <div>
-                    <h3 className="text-sm font-bold text-text-main">Kondisi & Keluhan Tubuh</h3>
-                    <p className="text-[11px] text-text-soft">Langkah 2/2: Ketuk chip atau gunakan suara</p>
-                  </div>
                 </div>
-
-                {/* Integrasi Komponen VoiceInput dari P4 */}
-                <div className="flex items-center gap-1.5">
-                  <VoiceInput
-                    onResult={handleVoiceResult}
-                    onError={(err) => setAlertInfo({ type: "error", message: err })}
-                    buttonClassName="!p-2 !w-9 !h-9"
-                    showStatus={false}
-                  />
-                  <span className="text-[11px] font-bold text-text-soft">Bicara</span>
+                <div className="min-w-0">
+                  <h3 className="text-[17px] font-semibold tracking-tight">
+                    {judulShift}
+                  </h3>
+                  <p className="mt-0.5 truncate text-[12px] text-white/65">
+                    {detailShift}
+                  </p>
                 </div>
               </div>
 
-              {/* Notifikasi Voice Recording */}
-              {voiceNotice && (
-                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs flex items-center justify-between">
-                  <span className="font-medium italic">{voiceNotice}</span>
-                  <button
-                    type="button"
-                    onClick={() => setVoiceNotice("")}
-                    className="underline text-[11px] font-bold"
-                  >
-                    Tutup
-                  </button>
+              {logHariIni ? (
+                <div className="relative mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 py-3 text-[13px] font-semibold text-white">
+                  <span className="material-symbols-outlined text-[18px] text-accent-mint">
+                    check
+                  </span>
+                  Tercatat
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleQuickLog}
+                  disabled={isLoading}
+                  className="relative mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 py-3 text-[13px] font-semibold text-white transition-colors hover:bg-white/15 disabled:opacity-60"
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    history
+                  </span>
+                  Salin Log Kemarin
+                </button>
+              )}
+            </section>
+
+            {/* Riwayat sesi tercatat — mengisi ruang di bawah kartu status */}
+            <section className="order-4 flex flex-col rounded-4xl border border-border-subtle bg-surface-card shadow-card lg:order-none">
+              <div className="flex items-center justify-between px-5 pb-2 pt-5">
+                <div>
+                  <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
+                    Sesi Tercatat
+                  </h2>
+                  <p className="mt-0.5 text-[11px] text-text-muted">
+                    {recentLogs.length} catatan pada akun Anda
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchLogs}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-subtle text-text-muted transition-colors hover:text-primary"
+                  aria-label="Muat ulang riwayat"
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    refresh
+                  </span>
+                </button>
+              </div>
+
+              {recentLogs.length === 0 ? (
+                <div className="m-4 rounded-3xl border border-dashed border-border-subtle bg-surface-subtle/50 p-6 text-center">
+                  <span className="material-symbols-outlined text-[32px] text-text-muted">
+                    calendar_today
+                  </span>
+                  <p className="mt-2 text-xs font-semibold text-text-muted">
+                    Belum ada catatan. Mulai catat shift hari ini!
+                  </p>
+                </div>
+              ) : (
+                <div className="flex h-full flex-col px-4 pb-4 pt-1">
+                  {(() => {
+                    const JUMLAH_PER_HALAMAN = 3;
+                    const totalHalaman = Math.max(
+                      1,
+                      Math.ceil(recentLogs.length / JUMLAH_PER_HALAMAN)
+                    );
+                    const halamanSekarang = Math.min(
+                      halamanRiwayat,
+                      totalHalaman
+                    );
+                    const awal = (halamanSekarang - 1) * JUMLAH_PER_HALAMAN;
+                    const logTampil = recentLogs.slice(
+                      awal,
+                      awal + JUMLAH_PER_HALAMAN
+                    );
+
+                    return (
+                      <>
+                        <div className="flex flex-col gap-2">
+                          {logTampil.map((log) => {
+                          const logDate = new Date(log.createdAt);
+                          const tanggalRingkas = new Intl.DateTimeFormat("id-ID", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          }).format(logDate);
+                          const jam = new Intl.DateTimeFormat("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).format(logDate);
+
+                          let statusLabel = "Kondisi optimal";
+                          let statusColor = "text-accent-mint";
+                          if (log.workHours >= 10) {
+                            statusLabel = "Kelelahan tinggi";
+                            statusColor = "text-status-alert";
+                          } else if (log.workHours >= 8) {
+                            statusLabel = "Perlu peregangan";
+                            statusColor = "text-amber-600";
+                          }
+
+                          return (
+                            <div
+                              key={log.id}
+                              className="rounded-2xl border border-border-subtle/70 bg-surface-subtle/70 p-3.5"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-card text-primary shadow-xs">
+                                  <span className="material-symbols-outlined text-[18px]">
+                                    two_wheeler
+                                  </span>
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-baseline justify-between gap-2">
+                                    <p className="truncate text-[13px] font-semibold text-text-primary">
+                                      Shift {log.workHours} jam
+                                    </p>
+                                    <span className="shrink-0 text-xs font-semibold text-text-primary">
+                                      Rp{" "}
+                                      {Number(log.income || 0).toLocaleString("id-ID")}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-0.5 flex items-center justify-between gap-1">
+                                    <p className="min-w-0 truncate text-[11px] text-text-muted">
+                                      {tanggalRingkas} • {jam} WIB
+                                    </p>
+                                    <div className="-mr-1 flex shrink-0 items-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditClick(log)}
+                                        title="Edit catatan ini"
+                                        className="rounded-full p-1 text-text-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                                      >
+                                        <span className="material-symbols-outlined text-[16px]">
+                                          edit
+                                        </span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteClick(log.id)}
+                                        title="Hapus catatan ini"
+                                        className="rounded-full p-1 text-text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+                                      >
+                                        <span className="material-symbols-outlined text-[16px]">
+                                          delete
+                                        </span>
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <p className="mt-1 truncate text-[11px] text-text-muted">
+                                    <span className={`font-medium ${statusColor}`}>
+                                      {statusLabel}
+                                    </span>
+                                    <span className="mx-1.5">·</span>
+                                    {log.symptoms && log.symptoms.length > 0
+                                      ? log.symptoms.join(", ")
+                                      : "Bebas keluhan"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        </div>
+
+                          {totalHalaman > 1 && (
+                            <div className="mt-auto flex items-center justify-center gap-2 border-t border-border-subtle pt-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setHalamanRiwayat((prev) =>
+                                    Math.max(1, prev - 1)
+                                  )
+                                }
+                                disabled={halamanSekarang === 1}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-subtle text-text-muted transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Halaman sebelumnya"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  chevron_left
+                                </span>
+                              </button>
+                              <span className="text-[11px] font-semibold text-text-muted">
+                                {halamanSekarang} / {totalHalaman}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setHalamanRiwayat((prev) =>
+                                    Math.min(totalHalaman, prev + 1)
+                                  )
+                                }
+                                disabled={halamanSekarang === totalHalaman}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-subtle text-text-muted transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Halaman berikutnya"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">
+                                  chevron_right
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                 </div>
               )}
+            </section>
+          </div>
 
-              {/* Chip Bebas Keluhan (Sehat & Bugar) */}
-              <button
-                type="button"
-                onClick={toggleHealthy}
-                className={`w-full p-3 rounded-xl flex items-center justify-between transition-all cursor-pointer ${
-                  isHealthy
-                    ? "border-2 border-primary bg-primary/10 text-primary shadow-xs"
-                    : "border border-border-subtle bg-surface-muted text-text-main hover:border-primary/40"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="material-symbols-outlined text-[22px] text-primary">
-                    verified
-                  </span>
-                  <div className="text-left">
-                    <span className="text-xs font-bold block">Bebas Keluhan & Bugar</span>
-                    <span className="text-[10px] text-text-soft">
-                      Tidak ada nyeri otot lumbal, bahu kaku, atau letih berlebih
-                    </span>
-                  </div>
+          {/* KANAN: form catatan hari ini */}
+          <div className="lg:col-span-7">
+            <form
+              onSubmit={handleSaveLog}
+              className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-7"
+            >
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
+                    Catatan Hari Ini
+                  </h2>
+                  <p className="mt-0.5 text-xs text-text-muted font-body">
+                    Parameter kerja dan kondisi fisik setelah shift.
+                  </p>
                 </div>
-                <span
-                  className={`material-symbols-outlined text-[18px] text-primary transition-opacity ${
-                    isHealthy ? "opacity-100" : "opacity-0"
-                  }`}
-                >
-                  check
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-subtle text-primary">
+                  <span className="material-symbols-outlined text-[19px]">
+                    edit_note
+                  </span>
                 </span>
-              </button>
-
-              <span className="text-[10px] font-bold text-text-soft uppercase tracking-wider pt-1">
-                Atau Pilih Titik Keluhan Fisik:
-              </span>
-
-              {/* Grid 6 Titik Keluhan Fisik dari Desain Stitch */}
-              <div className="grid grid-cols-2 gap-2">
-                {SYMPTOM_OPTIONS.map((item) => {
-                  const isSelected = selectedSymptoms.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleSymptom(item.id)}
-                      className={`p-2.5 rounded-xl border text-left flex items-start justify-between gap-1 transition-all cursor-pointer ${
-                        isSelected
-                          ? "border-2 border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                          : "border-border-subtle bg-surface-muted text-text-main hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="flex items-start gap-1.5 overflow-hidden">
-                        <span className="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">
-                          {item.icon}
-                        </span>
-                        <div className="truncate">
-                          <span className="text-xs font-bold block leading-tight truncate">
-                            {item.label}
-                          </span>
-                          <span className="text-[10px] text-text-soft block truncate">
-                            {item.subLabel}
-                          </span>
-                        </div>
-                      </div>
-                      <span
-                        className={`material-symbols-outlined text-[16px] text-primary shrink-0 transition-opacity ${
-                          isSelected ? "opacity-100" : "opacity-0"
-                        }`}
-                      >
-                        check
-                      </span>
-                    </button>
-                  );
-                })}
               </div>
 
-              {/* Tombol Aksi Form */}
-              <div className="flex items-center gap-2 pt-3">
+              <div className="space-y-6">
+                {/* Durasi */}
+                <div>
+                  <span className="mb-2.5 block text-[13px] font-medium text-text-muted">
+                    Durasi Operasi
+                  </span>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {HOUR_PRESETS.map((preset) => {
+                      const isSelected = workHours === preset.hours && !customHours;
+                      return (
+                        <button
+                          key={preset.hours}
+                          type="button"
+                          onClick={() => {
+                            setWorkHours(preset.hours);
+                            setCustomHours("");
+                          }}
+                          className={`rounded-2xl px-1 py-2.5 text-xs transition-colors ${
+                            isSelected
+                              ? "bg-primary font-semibold text-white shadow-xs"
+                              : "bg-surface-subtle font-medium text-text-muted hover:bg-surface-container"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-text-muted">
+                    <span className="shrink-0">Atau durasi lain:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={customHours}
+                      onChange={(e) => {
+                        setCustomHours(e.target.value);
+                        if (e.target.value) setWorkHours(parseInt(e.target.value, 10));
+                      }}
+                      placeholder="Misal: 6"
+                      className="w-24 shrink-0 rounded-full border border-border-subtle bg-surface-card px-3 py-1.5 text-xs font-bold text-text-primary placeholder:font-normal placeholder:text-text-muted focus:border-accent-mint focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="shrink-0">jam</span>
+                  </div>
+                </div>
+
+                {/* Pendapatan */}
+                <div>
+                  <span className="mb-2.5 block text-[13px] font-medium text-text-muted">
+                    Pendapatan Bersih{" "}
+                    <span className="font-normal text-text-muted">(opsional)</span>
+                  </span>
+                  <div className="relative flex items-center">
+                    <span className="pointer-events-none absolute left-4 text-sm font-semibold text-text-muted">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={income}
+                      onChange={handleIncomeChange}
+                      placeholder="0"
+                      className="w-full rounded-full border border-border-subtle bg-surface-subtle py-3 pl-11 pr-4 text-[15px] font-bold text-text-primary placeholder:font-semibold placeholder:text-text-muted focus:border-accent-mint focus:bg-surface-card focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    {[20000, 50000, 100000].map((nominal) => (
+                      <button
+                        key={nominal}
+                        type="button"
+                        onClick={() => tambahPendapatan(nominal)}
+                        className="rounded-full bg-surface-subtle px-3 py-1.5 text-[11px] font-medium text-text-muted transition-colors hover:bg-surface-container"
+                      >
+                        +{nominal / 1000}rb
+                      </button>
+                    ))}
+                  </div>
+
+                  {incomePerHour > 0 && (
+                    <p className="mt-3 flex items-center gap-1.5 text-xs text-text-muted">
+                      <span className="material-symbols-outlined text-[16px] text-accent-mint">
+                        insights
+                      </span>
+                      <span>
+                        Rata-rata{" "}
+                        <span className="font-semibold text-text-primary">
+                          Rp {incomePerHour.toLocaleString("id-ID")}
+                        </span>{" "}
+                        per jam
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Kondisi fisik */}
+                <div>
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <span className="text-[13px] font-medium text-text-muted">
+                      Kondisi Fisik
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <VoiceInput
+                        onResult={handleVoiceResult}
+                        onError={(err) => setAlertInfo({ type: "error", message: err })}
+                        buttonClassName="!p-2 !w-9 !h-9"
+                        showStatus={false}
+                      />
+                      <span className="text-[11px] font-semibold text-text-muted">
+                        Bicara
+                      </span>
+                    </div>
+                  </div>
+
+                  {voiceNotice && (
+                    <div className="mb-3 flex items-center justify-between rounded-full bg-primary/10 px-4 py-2 text-xs text-primary">
+                      <span className="truncate font-medium">{voiceNotice}</span>
+                      <button
+                        type="button"
+                        onClick={() => setVoiceNotice("")}
+                        className="ml-2 shrink-0 text-[11px] font-bold underline"
+                      >
+                        Tutup
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleHealthy}
+                      className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs transition-colors ${
+                        isHealthy
+                          ? "bg-primary font-semibold text-white shadow-xs"
+                          : "bg-surface-subtle font-medium text-text-muted hover:bg-surface-container"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        mood
+                      </span>
+                      Bebas keluhan
+                    </button>
+
+                    {SYMPTOM_OPTIONS.map((item) => {
+                      const isSelected = selectedSymptoms.includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleSymptom(item.id)}
+                          className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs transition-colors ${
+                            isSelected
+                              ? "bg-primary font-semibold text-white shadow-xs"
+                              : "bg-surface-subtle font-medium text-text-muted hover:bg-surface-container"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[16px]">
+                            {item.icon}
+                          </span>
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="mt-7 border-t border-border-subtle pt-5">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full rounded-full bg-primary px-6 py-4 text-[15px] font-semibold tracking-wide text-white shadow-xs transition-transform hover:bg-primary-dark active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading
+                    ? "Menyimpan…"
+                    : editingLogId
+                    ? "Simpan Perubahan"
+                    : "Simpan Catatan Harian"}
+                </button>
                 <button
                   type="button"
                   onClick={handleResetForm}
-                  className="px-4 h-12 rounded-xl border border-border-subtle bg-slate-100 hover:bg-slate-200 text-xs font-bold text-text-muted transition-all cursor-pointer"
+                  className="mx-auto mt-2 block rounded-full px-4 py-1.5 text-xs font-semibold text-text-muted transition-colors hover:bg-surface-subtle"
                 >
-                  Atur Ulang
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveLog}
-                  disabled={isLoading}
-                  className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-dark active:scale-[0.99] text-white font-display font-bold text-sm tracking-wide shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60"
-                >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {editingLogId ? "save" : "check_circle"}
-                  </span>
-                  <span>{editingLogId ? "Simpan Perubahan Log" : "Simpan Catatan Log"}</span>
+                  Atur ulang form
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
-
-        {/* SECTION RIWAYAT 3 HARI TERAKHIR (CRUD Read, Update, Delete) */}
-        <section className="mt-4 bg-white rounded-2xl p-5 border border-border-subtle shadow-xs flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[20px]">history</span>
-              </span>
-              <div>
-                <h3 className="text-sm font-bold text-text-main">Riwayat Catatan Shift & Pemulihan</h3>
-                <p className="text-xs text-text-soft">Histori ketegangan otot dan jam kerja Anda</p>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-text-soft">
-              Total {recentLogs.length} Catatan
-            </span>
-          </div>
-
-          {recentLogs.length === 0 ? (
-            <div className="p-8 text-center bg-surface-muted/40 rounded-xl border border-dashed border-border-subtle">
-              <span className="material-symbols-outlined text-[36px] text-text-soft">
-                calendar_today
-              </span>
-              <p className="text-xs font-semibold text-text-soft mt-2">
-                Belum ada catatan log tersimpan. Mulai catat shift hari ini!
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {recentLogs.slice(0, 5).map((log) => {
-                const logDate = new Date(log.createdAt);
-                const dayName = new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(logDate);
-                const dayNum = logDate.getDate();
-
-                // Evaluasi status kelelahan berdasarkan jam kerja
-                let badgeLabel = "Kondisi Optimal";
-                let badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                if (log.workHours >= 10) {
-                  badgeLabel = "Kelelahan Tinggi";
-                  badgeColor = "bg-red-50 text-red-700 border-red-200";
-                } else if (log.workHours >= 8) {
-                  badgeLabel = "Perlu Peregangan";
-                  badgeColor = "bg-amber-50 text-amber-700 border-amber-200";
-                }
-
-                return (
-                  <div
-                    key={log.id}
-                    className="p-3.5 rounded-xl border border-border-subtle hover:border-primary/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-muted/30"
-                  >
-                    <div className="flex items-start sm:items-center gap-3">
-                      {/* Tanggal Badge */}
-                      <div className="w-11 h-11 rounded-xl bg-white border border-border-subtle flex flex-col items-center justify-center shrink-0 shadow-2xs">
-                        <span className="text-[10px] font-bold text-text-soft uppercase leading-none">
-                          {dayName}
-                        </span>
-                        <span className="text-sm font-extrabold text-primary leading-none mt-0.5">
-                          {dayNum}
-                        </span>
-                      </div>
-
-                      {/* Detail Shift & Keluhan */}
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-text-main">
-                            {log.workHours} Jam Kemudi
-                          </span>
-                          <span className="text-text-soft text-xs">•</span>
-                          <span className="text-xs font-semibold text-text-soft">
-                            Rp {Number(log.income || 0).toLocaleString("id-ID")}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}
-                          >
-                            {badgeLabel}
-                          </span>
-                        </div>
-                        <p className="text-xs text-text-soft mt-0.5">
-                          Keluhan:{" "}
-                          <span className="font-medium text-text-main">
-                            {log.symptoms && log.symptoms.length > 0
-                              ? log.symptoms.join(", ")
-                              : "Bebas Keluhan"}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Aksi Edit & Hapus (Full CRUD) */}
-                    <div className="flex items-center gap-1.5 self-end sm:self-center">
-                      <button
-                        type="button"
-                        onClick={() => handleEditClick(log)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-primary hover:bg-primary/10 transition flex items-center gap-1 cursor-pointer"
-                        title="Edit log ini"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">edit</span>
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteClick(log.id)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition flex items-center gap-1 cursor-pointer"
-                        title="Hapus log ini"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">delete</span>
-                        <span>Hapus</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+      </main>
     </div>
   );
 }

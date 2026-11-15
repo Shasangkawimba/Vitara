@@ -14,6 +14,7 @@ import FinderPage from "./pages/Finder";
 import AuthPage from "./pages/Auth";
 import Logger from "./pages/Logger";
 import ChatPage from "./pages/Chat";
+import ProfilePage from "./pages/Profile";
 
 /**
  * Komponen Placeholder Standar
@@ -22,10 +23,10 @@ import ChatPage from "./pages/Chat";
 const PlaceholderPage = ({ nama, pemilik, deskripsi, tagWarna = "emerald" }) => {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center shadow-xs">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 mb-4 font-bold text-2xl shadow-inner">
+      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary mb-4 font-bold text-2xl">
         {pemilik.substring(0, 2)}
       </div>
-      <span className="mb-2 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+      <span className="mb-2 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-text-muted">
         Tanggung Jawab: {pemilik}
       </span>
       <h2 className="text-2xl font-bold tracking-tight text-slate-800">
@@ -37,7 +38,7 @@ const PlaceholderPage = ({ nama, pemilik, deskripsi, tagWarna = "emerald" }) => 
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
           to="/dashboard"
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition"
+          className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-dark transition"
         >
           Kembali ke Dashboard
         </Link>
@@ -55,7 +56,7 @@ const LoginPlaceholder = () => {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white font-extrabold text-xl">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white font-extrabold text-xl">
             V
           </div>
           <h1 className="mt-4 text-2xl font-bold text-slate-800">
@@ -75,7 +76,7 @@ const LoginPlaceholder = () => {
         <div className="mt-6 text-center">
           <Link
             to="/dashboard"
-            className="inline-block w-full rounded-lg bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-700 transition"
+            className="inline-block w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white hover:bg-primary-dark transition"
           >
             Masuk Langsung ke Dashboard Demo
           </Link>
@@ -100,7 +101,7 @@ const NotFoundPage = () => {
       </p>
       <Link
         to="/dashboard"
-        className="mt-6 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 transition"
+        className="mt-6 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-dark transition"
       >
         Menuju Dashboard
       </Link>
@@ -134,6 +135,9 @@ function App() {
 
         {/* Rute Pengingat (Reminder) — Tanggung Jawab P4 */}
         <Route path="/reminder" element={<ReminderPage />} />
+
+        {/* Rute Profil Pengguna — milik bersama, mengikuti shell P3 */}
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* Catch-all 404 di dalam layout */}
         <Route path="*" element={<NotFoundPage />} />

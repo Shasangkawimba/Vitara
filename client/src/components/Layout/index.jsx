@@ -1,79 +1,46 @@
 // ============================================================
 // client/src/components/Layout/index.jsx
-// Layout Shell Utama VITARA
-// Mendukung toggle buka/tutup (collapse) Sidebar dari tombol hamburger
+// Layout shell VITARA — tanpa sidebar, mengikuti Stitch:
+//   • Navbar dengan floating dock di desktop
+//   • Hero gradient pine selebar layar untuk Dashboard & Logger
+//   • Konten halaman mengatur kolom & padding-nya sendiri
+//   • Footer desktop + floating bottom dock di mobile
 // ============================================================
-import React, { useState } from "react";
-import { Outlet } from "react-router-dom";
+import React from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
-import Sidebar from "./Sidebar";
-import SubNavbar from "./SubNavbar";
+import BottomNav from "./BottomNav";
+import Footer from "./Footer";
+
+const HALAMAN_GELAP = ["/dashboard", "/logger", "/chat", "/finder", "/profile", "/reminder"];
 
 export const Layout = ({ children }) => {
-  // Default terbuka di layar desktop
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prev) => !prev);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  const { pathname } = useLocation();
+  const gelap = HALAMAN_GELAP.some((path) => pathname.startsWith(path));
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#eef3f6] dark:bg-slate-950 font-sans antialiased text-slate-800 dark:text-slate-100 transition-colors duration-200">
-      {/* 1. Header Bagian Paling Atas (Full Width) */}
+    <div className="relative flex min-h-screen flex-col bg-tekstur-kanvas text-text-primary transition-colors duration-200">
+      {/* Hero band gelap yang memudar ke kanvas */}
+      {gelap && (
+        <div
+          aria-hidden="true"
+          className="hero-gradient pointer-events-none absolute inset-x-0 top-0 h-[440px]"
+        />
+      )}
+
       <Navbar />
 
-      {/* 2. Body Layout Tengah: Sidebar + Main Workspace */}
-      <div className="flex flex-1 gap-4 lg:gap-5 p-3 sm:p-5 pb-20 lg:pb-5 min-w-0">
-        {/* Floating Sidebar (Kiri di Desktop, Bawah di Mobile) */}
-        <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      <main className="relative z-10 flex w-full flex-1 flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        {children || <Outlet />}
+      </main>
 
-        {/* Konten Kanan: SubNavbar + Kontainer Halaman */}
-        <div className="flex flex-1 flex-col gap-3 sm:gap-4 min-w-0 transition-all duration-300">
-          {/* SubNavbar (Tombol Hamburger Garis Tiga, Judul Halaman & Breadcrumb) */}
-          <SubNavbar onToggleSidebar={toggleSidebar} />
-
-          {/* Area Konten Utama Halaman (Putih Melengkung) */}
-          <main className="flex-1 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 sm:p-7 shadow-xs overflow-y-auto transition-colors duration-200">
-            {children || <Outlet />}
-          </main>
-        </div>
-      </div>
-
-      {/* 3. Footer Bagian Paling Bawah (Bentuk Mirip Header, Teks di Center) */}
-      <footer className="w-full border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-3.5 mb-16 lg:mb-0 transition-colors duration-200">
-        <div className="flex flex-col items-center justify-center text-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 font-normal">
-          {/* Baris Pertama: Hak Cipta & Nama Sistem */}
-          <p>
-            &copy; 2024 VITARA Driver Ergonomics &amp; Health System
-          </p>
-
-          {/* Baris Kedua: Menu Panduan, Pusat Bantuan & Call Darurat */}
-          <div className="flex items-center justify-center flex-wrap gap-x-2 gap-y-0.5">
-            <span className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Panduan K3</span>
-            <span className="text-[9px] text-slate-300 dark:text-slate-600">&bull;</span>
-            <span className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Pusat Bantuan</span>
-            <span className="text-[9px] text-slate-300 dark:text-slate-600">&bull;</span>
-            <a
-              href="tel:119"
-              className="inline-flex items-center gap-1 font-semibold text-red-500/90 dark:text-red-400 hover:text-red-600 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[13px] shrink-0">
-                call
-              </span>
-              <span>Call Darurat Medis 119</span>
-            </a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+      <BottomNav />
     </div>
   );
 };
 
 export { Navbar } from "./Navbar";
-export { Sidebar } from "./Sidebar";
-export { SubNavbar } from "./SubNavbar";
+export { default as BottomNav } from "./BottomNav";
+export { default as Footer } from "./Footer";
 export default Layout;

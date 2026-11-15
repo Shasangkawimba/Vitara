@@ -8,7 +8,7 @@ const MessageBubble = ({ teks, waktu }) => {
   return (
     <div className="flex justify-end">
       <div className="max-w-[85%] sm:max-w-[75%]">
-        <div className="rounded-2xl rounded-br-sm bg-primary px-4 py-3 shadow-sm">
+        <div className="rounded-[20px] rounded-br-md bg-primary px-4 py-3 shadow-xs">
           <p className="text-sm leading-relaxed text-white whitespace-pre-wrap break-words">
             {teks}
           </p>

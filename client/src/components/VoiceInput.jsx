@@ -151,8 +151,8 @@ const VoiceInput = ({
           !isSupported || disabled
             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
             : isListening
-            ? 'bg-red-600 text-white shadow-lg shadow-red-500/50 scale-105 animate-pulse focus:ring-red-500'
-            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg focus:ring-emerald-500'
+            ? 'bg-red-600 text-white shadow-xs shadow-red-500/40 scale-105 animate-pulse focus:ring-red-500'
+            : 'bg-primary hover:bg-primary-dark text-white focus:ring-primary'
         } ${buttonClassName}`}
       >
         {/* Ikon Mikrofon SVG */}

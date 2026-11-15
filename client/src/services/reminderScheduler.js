@@ -143,7 +143,7 @@ export function checkDueReminders(reminders, onTriggered) {
 
       if (isToday) {
         // Tembakkan notifikasi browser!
-        sendWebNotification(`⏰ VITARA: ${reminder.title}`, {
+        sendWebNotification(`VITARA: ${reminder.title}`, {
           body: reminder.notes || 'Waktunya rehat sejenak dan jaga kesehatan tubuh!',
           tag: `reminder-${reminder.id}-${minuteKey}`,
         });

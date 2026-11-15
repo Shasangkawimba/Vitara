@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
 @import "leaflet/dist/leaflet.css";
 
 @tailwind base;
@@ -6,198 +6,359 @@
 @tailwind utilities;
 
 @layer base {
+  /* Ditulis sebagai CSS biasa (bukan @apply) agar tidak bergantung pada
+     pembacaan ulang tailwind.config.js saat dev server sedang berjalan. */
   body {
-    @apply bg-surface text-text-main font-sans antialiased transition-colors duration-200;
+    background-color: #f2f5f4;
+    color: #0d1c1b;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+
+  /* Heading memakai Plus Jakarta Sans; teks fungsional memakai Inter. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  }
+
+  /* Padding aman untuk perangkat iOS dengan notch (safe area bawah) */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Sembunyikan scrollbar horizontal tanpa menghilangkan fungsi swipe. */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  /* Tekstur kanvas — garis kontur organik & titik halus menimpa sage-white.
+     Mengikuti filosofi "Organic Precision" DESIGN.md; dibuat dari SVG
+     data-URI agar tanpa aset eksternal dan tetap ringan di mobile. */
+  .bg-tekstur-kanvas {
+    background-color: #f2f5f4;
+    background-image:
+      radial-gradient(1150px 540px at 50% -8%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E%3Cg fill='none' stroke='%23183B38' stroke-opacity='0.05' stroke-width='1.35'%3E%3Cpath d='M-30 62 C45 22 95 96 165 58 S 258 38 295 88'/%3E%3Cpath d='M-30 108 C52 68 105 142 175 108 S 268 92 295 132'/%3E%3Cpath d='M-30 154 C58 116 115 192 185 158 S 272 148 295 180'/%3E%3Cpath d='M-30 200 C64 164 125 240 195 204 S 276 200 295 228'/%3E%3Cpath d='M-30 246 C70 212 135 286 205 250 S 280 252 295 276'/%3E%3C/g%3E%3Cg fill='%23183B38' fill-opacity='0.045'%3E%3Ccircle cx='42' cy='46' r='1.7'/%3E%3Ccircle cx='222' cy='152' r='1.7'/%3E%3Ccircle cx='138' cy='230' r='1.4'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: auto, 280px 280px;
+    background-repeat: no-repeat, repeat;
+  }
+
+  /* Lapisan garis kontur putih samar untuk panel gelap (auth, hero). */
+  .tekstur-kontur-putih {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.05' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.045'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 320px 320px;
+  }
+
+  /* Latar gradien pine yang memudar ke canvas — dipakai halaman
+     Dashboard & Logger (persis seperti hero band pada desain Stitch).
+     Dilapisi garis kontur putih sangat tipis agar tidak polos. */
+  .hero-gradient {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.055' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.05'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E"),
+      linear-gradient(
+        180deg,
+        #0d2422 0%,
+        #163532 45%,
+        #1d4a45 68%,
+        #4a716b 84%,
+        #a9c2bd 93%,
+        #f2f5f4 100%
+      );
+    background-size: 320px 320px, auto;
+    background-repeat: repeat, no-repeat;
+  }
+
+  /* Pil kaca di atas hero gelap (profil, notifikasi, segmented control). */
+  .glass-pill {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-icon {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Peta Leaflet dibuat pucat-mint agar menyatu dengan kanvas. */
+  .map-tint .leaflet-tile-pane {
+    filter: grayscale(0.5) sepia(0.18) hue-rotate(105deg) saturate(0.85)
+      brightness(1.06);
+  }
+
+  .map-tint .leaflet-container {
+    background: #e8f0ec;
+    font-family: Inter, sans-serif;
   }
 }
 
 /* ============================================================
-   Dark Mode Global Theme Override
-   Memastikan saat class "dark" aktif di <html>, seluruh elemen
-   otomatis beralih ke warna gelap yang nyaman di mata
+   Dark Mode — palet pine gelap yang konsisten dengan canvas.
+   Override memakai !important agar komponen lama ikut tema.
    ============================================================ */
 .dark body {
-  background-color: #0b1120 !important;
-  color: #f1f5f9 !important;
+  background-color: #0b1412 !important;
+  color: #eef4f2 !important;
 }
 
-.dark .bg-\[\#eef3f6\] {
-  background-color: #090e1a !important;
+/* Tekstur kanvas gelap — kontur mint pucat di atas midnight forest. */
+.dark .bg-tekstur-kanvas {
+  background-color: #0b1412;
+  background-image:
+    radial-gradient(1150px 540px at 50% -8%, rgba(84, 161, 149, 0.14), rgba(84, 161, 149, 0)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E%3Cg fill='none' stroke='%23A9CEC9' stroke-opacity='0.05' stroke-width='1.35'%3E%3Cpath d='M-30 62 C45 22 95 96 165 58 S 258 38 295 88'/%3E%3Cpath d='M-30 108 C52 68 105 142 175 108 S 268 92 295 132'/%3E%3Cpath d='M-30 154 C58 116 115 192 185 158 S 272 148 295 180'/%3E%3Cpath d='M-30 200 C64 164 125 240 195 204 S 276 200 295 228'/%3E%3Cpath d='M-30 246 C70 212 135 286 205 250 S 280 252 295 276'/%3E%3C/g%3E%3Cg fill='%23A9CEC9' fill-opacity='0.05'%3E%3Ccircle cx='42' cy='46' r='1.7'/%3E%3Ccircle cx='222' cy='152' r='1.7'/%3E%3Ccircle cx='138' cy='230' r='1.4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: auto, 280px 280px;
+  background-repeat: no-repeat, repeat;
 }
 
-.dark header {
-  background-color: rgba(15, 23, 42, 0.85) !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+.dark .hero-gradient {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.05' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.045'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(
+      180deg,
+      #08110f 0%,
+      #0f2523 45%,
+      #173c38 70%,
+      #234a45 86%,
+      #0b1412 100%
+    ) !important;
+  background-size: 320px 320px, auto;
+  background-repeat: repeat, no-repeat;
 }
 
-.dark aside {
-  background-color: #0f172a !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+.dark .bg-surface-canvas,
+.dark .bg-surface,
+.dark .bg-surface\/95 {
+  background-color: #0b1412 !important;
 }
 
-.dark main {
-  background-color: #0f172a !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
-}
-
+.dark .bg-surface-card,
 .dark .bg-white {
-  background-color: #0f172a !important;
-  color: #f8fafc !important;
+  background-color: #12201d !important;
+  color: #f3f8f6 !important;
 }
 
+.dark .bg-surface-subtle,
+.dark .bg-surface-muted {
+  background-color: #1d2e29 !important;
+}
+
+/* Varian opacity surface-subtle (dipakai Chat/Reminder/Logger/Finder) —
+   sebelumnya jatuh ke nilai terang dan "menabrak" di dark mode. */
+.dark .bg-surface-subtle\/50,
+.dark .bg-surface-subtle\/60,
+.dark .bg-surface-subtle\/70 {
+  background-color: rgba(29, 46, 41, 0.62) !important;
+}
+.dark .border-border-subtle\/70 {
+  border-color: rgba(38, 56, 52, 0.7) !important;
+}
+
+.dark .bg-surface-container,
+.dark .hover\:bg-surface-container:hover {
+  background-color: #1b2c28 !important;
+}
+
+.dark .bg-surface-variant {
+  background-color: #2c3f3a !important;
+}
+
+.dark .hover\:bg-surface-subtle:hover,
+.dark .hover\:bg-surface-muted:hover,
+.dark .hover\:bg-surface-muted\/60:hover {
+  background-color: #1b2c28 !important;
+}
+
+.dark .bg-white\/85,
+.dark .bg-white\/90,
+.dark .bg-white\/95 {
+  background-color: rgba(18, 32, 29, 0.92) !important;
+}
+
+.dark .border-border-subtle,
 .dark .border-slate-100,
 .dark .border-slate-200,
 .dark .border-slate-200\/80,
-.dark .border-slate-200\/90,
-.dark .border-border-subtle {
-  border-color: #1e293b !important;
+.dark .border-slate-200\/90 {
+  border-color: #263834 !important;
 }
 
+.dark .divide-border-subtle > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #263834 !important;
+}
+
+.dark .text-text-primary,
+.dark .text-text-main,
 .dark .text-slate-900,
 .dark .text-slate-800,
-.dark .text-slate-700,
-.dark .text-text-main {
-  color: #f8fafc !important;
+.dark .text-slate-700 {
+  color: #f3f8f6 !important;
 }
 
-.dark .text-slate-600,
-.dark .text-slate-500,
 .dark .text-text-muted,
-.dark .text-text-soft {
-  color: #94a3b8 !important;
+.dark .text-text-soft,
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #a3b5b0 !important;
 }
 
 .dark .text-slate-400 {
-  color: #64748b !important;
+  color: #7e918c !important;
 }
 
-.dark .bg-slate-50,
-.dark .bg-surface-muted {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
+.dark .text-primary {
+  color: #a9cec7 !important;
 }
 
-.dark .bg-surface,
-.dark .bg-surface\/95 {
-  background-color: #0f172a !important;
+.dark .hover\:text-primary:hover {
+  color: #c4eae3 !important;
 }
 
-.dark .bg-slate-100 {
-  background-color: #1e293b !important;
-}
-
-.dark .bg-slate-200\/80 {
-  background-color: #1e293b !important;
-}
-
-/* Card Widget Health Monitoring di Sidebar & Komponen Konsultasi (Chat) saat Dark Mode */
-.dark .bg-\[\#cce3ed\] {
-  background-color: #164e63 !important;
-  color: #e0f2fe !important;
-}
-
-.dark .bg-\[\#b8d8e5\] {
-  background-color: #0e7490 !important;
+.dark .bg-primary {
+  background-color: #23524e !important;
   color: #ffffff !important;
 }
 
-/* Penyesuaian Dark Mode pada Dashboard:
-   - Shape "KESEHATAN KERJA & PERFORMA • MINGGU KE-21" (.bg-cyan-50)
-   - Badge "Spesialis Okupasi" (.bg-cyan-50)
-   - Box "Rekomendasi Micro-Break" (.bg-cyan-50\/60)
-   Warna disamakan menjadi shape biru Health Monitoring (#164e63), teks Rekomendasi Micro-Break putih */
-.dark .bg-cyan-50,
-.dark .bg-cyan-50\/60 {
-  background-color: #164e63 !important;
-  border-color: #0e7490 !important;
-  color: #e0f2fe !important;
+.dark .hover\:bg-primary-dark:hover {
+  background-color: #2f6a63 !important;
 }
 
-.dark .text-cyan-800,
-.dark .text-cyan-900 {
-  color: #ffffff !important;
+.dark .bg-primary\/10 {
+  background-color: rgba(169, 206, 199, 0.14) !important;
 }
 
-.dark .bg-cyan-50\/60 span,
-.dark .bg-cyan-50\/60 p {
-  color: #ffffff !important;
+.dark .bg-primary\/5 {
+  background-color: rgba(169, 206, 199, 0.08) !important;
 }
 
-/* Penyesuaian khusus halaman Ergo Coach AI (Chat) saat Dark Mode:
-   Background kontainer utama, card, dan header chat menjadi warna abu gelap elegan (#1e293b / #334155 border) */
-.dark main:has([data-page="chat"]) {
-  background-color: #1e293b !important; /* Latar utama main sedikit abu gelap */
-  border-color: #334155 !important;
+.dark .text-primary\/80,
+.dark .text-primary\/70 {
+  color: rgba(169, 206, 199, 0.8) !important;
 }
 
-.dark [data-page="chat"] .bg-white,
-.dark [data-page="chat"] .bg-surface,
-.dark [data-page="chat"] .bg-surface\/95,
-.dark [data-page="chat"] .bg-surface-muted,
-.dark [data-page="chat"] button.rounded-full {
-  background-color: #1e293b !important; /* Warna abu gelap elegan */
-  border-color: #334155 !important;
-  color: #f1f5f9 !important;
+.dark .bg-primary\/70 {
+  background-color: rgba(169, 206, 199, 0.7) !important;
 }
 
-.dark [data-page="chat"] .border-border-subtle {
-  border-color: #334155 !important;
-}
-
-.dark [data-page="chat"] input,
-.dark [data-page="chat"] textarea {
-  background-color: #0f172a !important; /* Kotak input kontras di atas latar abu */
-  border-color: #334155 !important;
-  color: #ffffff !important;
-}
-
-.dark [data-page="chat"] .text-text-main,
-.dark [data-page="chat"] .text-slate-800,
-.dark [data-page="chat"] .text-slate-900 {
-  color: #f8fafc !important;
-}
-
-.dark [data-page="chat"] .text-text-muted,
-.dark [data-page="chat"] .text-text-soft,
-.dark [data-page="chat"] .text-slate-500 {
-  color: #94a3b8 !important;
-}
-
-/* Pengecualian khusus untuk Card & Angka Skor Risiko Kelelahan agar di Dark Mode tetap berwarna amber dan teks angka tetap hitam */
-.dark .risk-score-card,
-.dark .risk-score-card * {
-  color: inherit;
-}
-
-.dark .risk-score-badge {
-  color: #c2410c !important; /* Orange tua solid */
-  border-color: #f97316 !important;
-  background-color: #ffedd5 !important;
-}
-
-.dark .risk-score-number {
-  color: #0f172a !important;
-}
-
-.dark .risk-score-label {
-  color: #334155 !important;
-}
-
-.dark .risk-score-sub {
-  color: #64748b !important;
-}
-
-.dark .risk-score-desc {
-  color: #334155 !important;
+.dark .bg-primary\/40 {
+  background-color: rgba(169, 206, 199, 0.4) !important;
 }
 
 .dark input,
 .dark select,
 .dark textarea {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-  color: #f8fafc !important;
+  background-color: #1d2e29 !important;
+  border-color: #263834 !important;
+  color: #f3f8f6 !important;
+}
+
+/* Badge & status semantik */
+.dark .bg-amber-50,
+.dark .bg-amber-100\/60 {
+  background-color: #2b2312 !important;
+}
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 {
+  color: #fbbf24 !important;
+}
+.dark .border-amber-200 {
+  border-color: #4d3a12 !important;
+}
+
+.dark .bg-red-50 {
+  background-color: #2f1418 !important;
+}
+.dark .text-red-600,
+.dark .text-red-700 {
+  color: #f87171 !important;
+}
+.dark .text-red-800 {
+  color: #fca5a5 !important;
+}
+.dark .border-red-200 {
+  border-color: #55262b !important;
+}
+
+.dark .bg-emerald-50 {
+  background-color: #0d2b22 !important;
+}
+.dark .text-emerald-700 {
+  color: #34d399 !important;
+}
+.dark .text-emerald-800 {
+  color: #6ee7b7 !important;
+}
+.dark .border-emerald-200 {
+  border-color: #1d4a3a !important;
+}
+
+.dark .hover\:bg-red-50:hover,
+.dark .hover\:bg-rose-50:hover {
+  background-color: #2f1418 !important;
+}
+.dark .hover\:bg-emerald-50:hover {
+  background-color: #0d2b22 !important;
+}
+.dark .hover\:bg-amber-50:hover {
+  background-color: #2b2312 !important;
+}
+
+.dark .ring-red-200 {
+  --tw-ring-color: #55262b !important;
+}
+
+/* Popup peta Leaflet */
+.dark .leaflet-container {
+  background-color: #0b1412 !important;
+}
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background-color: #12201d !important;
+  color: #f3f8f6 !important;
+}
+.dark .leaflet-container a.leaflet-popup-close-button {
+  color: #a3b5b0 !important;
+}
+
+/* Tombol 119 tetap putih kontras tinggi meski tema gelap. */
+.dark .tombol-119 {
+  background-color: #ffffff !important;
+  color: #b91c1c !important;
+}
+
+/* Gelembung jawaban AI & kartu percakapan tetap terbaca sebagai kartu. */
+.dark [data-page="chat"] .bg-white,
+.dark [data-page="chat"] .bg-surface,
+.dark [data-page="chat"] .bg-surface\/95,
+.dark [data-page="chat"] .bg-surface-subtle,
+.dark [data-page="chat"] .bg-surface-muted {
+  background-color: #182724 !important;
+  border-color: #263834 !important;
+  color: #f3f8f6 !important;
+}
+
+.dark [data-page="chat"] input,
+.dark [data-page="chat"] textarea {
+  background-color: #0b1412 !important;
+  border-color: #263834 !important;
+  color: #ffffff !important;
 }

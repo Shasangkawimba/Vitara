@@ -37,6 +37,7 @@ app.get(["/", "/api"], (_req, res) => {
           "POST /api/ai/coach (Konsultasi keluhan dengan AI)",
           "GET /api/ai/risk-score (Skor risiko harian)",
           "GET /api/ai/weekly-insight (Ringkasan mingguan)",
+          "GET /api/ai/history (Riwayat konsultasi user)",
         ],
       },
     },

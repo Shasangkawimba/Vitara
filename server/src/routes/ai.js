@@ -4,6 +4,7 @@
 //   POST /api/ai/coach        → konsultasi keluhan (Minggu 2)
 //   GET  /api/ai/risk-score   → skor risiko kelelahan 0-100 (Minggu 3)
 //   GET  /api/ai/weekly-insight → ringkasan evaluasi mingguan (Minggu 4)
+//   GET  /api/ai/history      → riwayat konsultasi user (baru)
 //   GET  /api/ai/status       → cek kesiapan layanan AI
 // ============================================================
 const express = require("express");
@@ -235,6 +236,45 @@ router.get("/weekly-insight", authenticateToken, async (req, res) => {
         : undefined,
     },
   });
+});
+
+// GET /api/ai/history → 30 interaksi terakhir milik user (urut terlama → terbaru)
+router.get("/history", authenticateToken, async (req, res) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: "Sesi tidak valid. Silakan login ulang.",
+    });
+  }
+
+  try {
+    // Ambil 30 baris terbaru lalu dibalik agar urut kronologis untuk dirender.
+    const rows = await prisma.aiInteraction.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        pesanUser: true,
+        responsAi: true,
+        isEmergency: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: rows.reverse(),
+    });
+  } catch (err) {
+    console.error("[routes/ai] Gagal mengambil riwayat:", err?.message || err);
+    return res.status(500).json({
+      success: false,
+      error: "Gagal mengambil riwayat percakapan.",
+    });
+  }
 });
 
 module.exports = router;

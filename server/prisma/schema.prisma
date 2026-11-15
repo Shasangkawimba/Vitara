@@ -13,8 +13,12 @@ datasource db {
 
 // Model Pengguna (User)
 // Menyimpan kredensial autentikasi dan profil dasar pekerja
+// Catatan: username bersifat @unique dan nullable agar akun lama
+// (yang hanya punya phone) tetap bisa login via nomor telepon;
+// akun baru wajib mengisi username saat registrasi.
 model User {
   id         String    @id @default(cuid())
+  username   String?   @unique
   phone      String    @unique
   password   String
   name       String

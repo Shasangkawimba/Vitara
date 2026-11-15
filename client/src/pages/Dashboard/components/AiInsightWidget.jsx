@@ -1,165 +1,260 @@
 // ============================================================
 // client/src/pages/Dashboard/components/AiInsightWidget.jsx
-// Widget Integrasi Ergo-Coach AI untuk Dashboard (Milestone Minggu 4)
-// Mengambil Risk Score (/api/ai/risk-score) & Weekly Insight (/api/ai/weekly-insight)
-// Sesuai spesifikasi API_CONTRACT.md (P2)
+// Dua kartu evaluasi Ergo-Coach untuk Dashboard:
+//   • EvaluationCard → skor risiko + saran singkat, ditempatkan
+//     sejajar dengan kartu Wawasan Ergonomi Tubuh.
+//   • ErgoInsightCard → ringkasan ergo-insight selebar konten.
+// Sumber: GET /api/ai/risk-score & GET /api/ai/weekly-insight.
 // ============================================================
 import React from "react";
 import { Link } from "react-router-dom";
 
-export const AiInsightWidget = ({ riskScoreData, weeklyInsightData, loading }) => {
-  // Evaluasi skor & level risiko dari respons GET /api/ai/risk-score
-  // Ambang level sesuai API_CONTRACT.md: skor >= 70 Tinggi, >= 40 Sedang, < 40 Rendah
-  const skor = riskScoreData?.skor ?? null;
-  const levelApi = riskScoreData?.level ?? null;
-  const saranRisk = riskScoreData?.saran ?? null;
-
-  const getRiskDisplay = (score, apiLevel) => {
-    if (score === null || score === undefined) {
-      return {
-        label: "Belum Ada Data",
-        textColor: "text-slate-600 dark:text-slate-300",
-        bgColor: "bg-slate-50 dark:bg-slate-800/60",
-        borderColor: "border-slate-200 dark:border-slate-700",
-        barColor: "bg-slate-400",
-        pesan: "Catat jam kerja hari ini di Catatan Harian untuk memantau risiko kelelahan Anda.",
-      };
-    }
-    if (score >= 70 || apiLevel === "Risiko Tinggi") {
-      return {
-        label: "Risiko Tinggi",
-        textColor: "text-rose-700 dark:text-rose-400",
-        bgColor: "bg-rose-50 dark:bg-rose-950/30",
-        borderColor: "border-rose-200 dark:border-rose-800/60",
-        barColor: "bg-rose-500",
-        pesan: saranRisk || "Beban kerja ekstrem. Sangat disarankan kurangi durasi berkendara hari ini.",
-      };
-    }
-    if (score >= 40 || apiLevel === "Risiko Sedang") {
-      return {
-        label: "Risiko Sedang",
-        textColor: "text-[#c2410c] dark:text-[#c2410c]", // Orange tua
-        bgColor: "bg-amber-50",
-        borderColor: "border-amber-200",
-        barColor: "bg-amber-500",
-        badgeBg: "bg-orange-100/90 border-orange-300",
-        pesan: saranRisk || "Mulai timbul kelelahan otot. Lakukan peregangan berkala setiap 2 jam berkendara.",
-      };
-    }
+/** Terjemahkan skor risiko menjadi label, warna, dan saran singkat. */
+const hitungLevelRisiko = (skor, levelApi, saran) => {
+  if (skor === null || skor === undefined) {
     return {
-      label: "Risiko Rendah",
-      textColor: "text-emerald-700",
-      bgColor: "bg-emerald-50",
-      borderColor: "border-emerald-200",
-      barColor: "bg-emerald-500",
-      badgeBg: "bg-emerald-100/90 border-emerald-300 text-emerald-800",
-      pesan: saranRisk || "Kondisi fisik stabil. Pertahankan pola istirahat dan hidrasi cairan.",
+      label: "Belum ada data",
+      textColor: "text-text-muted",
+      warnaBusur: "stroke-surface-variant",
+      pesan:
+        "Catat jam kerja hari ini di Catatan Harian untuk memantau risiko kelelahan Anda.",
     };
+  }
+  if (skor >= 70 || levelApi === "Risiko Tinggi") {
+    return {
+      label: "Risiko tinggi",
+      textColor: "text-status-alert",
+      warnaBusur: "stroke-status-alert",
+      pesan:
+        saran ||
+        "Beban kerja ekstrem. Sangat disarankan kurangi durasi berkendara hari ini.",
+    };
+  }
+  if (skor >= 40 || levelApi === "Risiko Sedang") {
+    return {
+      label: "Risiko sedang",
+      textColor: "text-amber-700",
+      warnaBusur: "stroke-amber-500",
+      pesan:
+        saran ||
+        "Mulai timbul kelelahan otot. Lakukan peregangan berkala setiap 2 jam berkendara.",
+    };
+  }
+  return {
+    label: "Risiko rendah",
+    textColor: "text-primary",
+    warnaBusur: "stroke-accent-mint",
+    pesan:
+      saran || "Kondisi fisik stabil. Pertahankan pola istirahat dan hidrasi cairan.",
   };
+};
 
-  const level = getRiskDisplay(skor, levelApi);
-
-  // Ambil ringkasan dari respons GET /api/ai/weekly-insight
-  const ringkasanInsight =
-    weeklyInsightData?.ringkasan ||
-    weeklyInsightData?.data?.ringkasan ||
-    "Evaluasi beban kerja dan keluhan muskuloskeletal mingguan Anda sedang disinkronkan dari riwayat kerja.";
+/**
+ * Kartu evaluasi kondisi: skor risiko, level, dan satu saran singkat.
+ * Mengalir di kolom kiri Dashboard, tepat di bawah deret metrik.
+ */
+export const EvaluationCard = ({
+  riskScoreData,
+  loading,
+  hariBebasKeluhan = 0,
+  totalHariAktif = 0,
+}) => {
+  const skor = riskScoreData?.skor ?? null;
+  const level = hitungLevelRisiko(
+    skor,
+    riskScoreData?.level ?? null,
+    riskScoreData?.saran ?? null
+  );
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-      {/* 1. Skor Risiko Harian AI (0 - 100) */}
-      <div className={`risk-score-card rounded-xl border p-5 shadow-xs transition-colors ${level.borderColor} ${level.bgColor}`}>
-        <div className="flex items-center justify-between">
-          <span className="risk-score-label text-xs font-bold uppercase tracking-wider text-slate-700">
-            Skor Risiko Kelelahan
-          </span>
-          <span
-            className={`risk-score-badge inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${level.textColor} ${level.badgeBg} shadow-2xs`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#c2410c] shrink-0" />
-            <span>{level.label}</span>
-          </span>
+    <section className="flex h-full flex-col rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
+            Evaluasi Kondisi
+          </h2>
+          <p className="mt-0.5 text-xs text-text-muted font-body">
+            Rekomendasi dari Ergo-Coach
+          </p>
         </div>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-subtle text-primary">
+          <span className="material-symbols-outlined text-[19px]">
+            monitor_heart
+          </span>
+        </span>
+      </div>
 
-        <div className="mt-4 flex items-baseline gap-2">
+      <div className="mt-5">
+        <div className="flex items-baseline gap-1.5">
           {loading ? (
-            <div className="h-10 w-24 animate-pulse rounded-md bg-slate-200 dark:bg-slate-700" />
+            <div className="h-9 w-20 animate-pulse rounded-lg bg-surface-subtle" />
           ) : (
             <>
-              <span className="risk-score-number text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+              <span className="text-[38px] font-bold leading-none tracking-tight text-text-primary">
                 {skor !== null ? skor : "—"}
               </span>
-              <span className="risk-score-sub text-xs sm:text-sm font-semibold text-slate-500">
-                {skor !== null ? "/ 100" : "Belum dinilai"}
+              <span className="text-xs font-semibold text-text-muted">
+                {skor !== null ? "/ 100" : "belum dinilai"}
               </span>
             </>
           )}
         </div>
 
-        {/* Meter Bar Progress */}
-        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${level.barColor}`}
-            style={{ width: `${skor !== null ? Math.min(Math.max(skor, 5), 100) : 0}%` }}
-          />
+        <p className={`mt-2 text-xs font-semibold ${level.textColor}`}>
+          {level.label}
+        </p>
+
+        {/* Gauge busur setengah lingkaran — skor digambar sebagai busur warna */}
+        <div className="mt-4 flex justify-center">
+          <svg
+            viewBox="0 0 100 52"
+            className="w-44 max-w-full"
+            role="img"
+            aria-label={`Skor risiko ${skor !== null ? skor : "-"} dari 100`}
+          >
+            <path
+              d="M10 46 A40 40 0 0 1 90 46"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="9"
+              strokeLinecap="round"
+              className="text-border-subtle"
+            />
+            <path
+              d="M10 46 A40 40 0 0 1 90 46"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="9"
+              strokeLinecap="round"
+              strokeDasharray={`${
+                skor !== null ? (Math.min(Math.max(skor, 0), 100) / 100) * 126 : 0
+              } 999`}
+              className={`${level.warnaBusur} transition-all duration-500`}
+            />
+          </svg>
         </div>
 
-        <p className="risk-score-desc mt-3 text-xs leading-relaxed text-slate-700">
+        <p className="mt-3.5 text-[13px] leading-relaxed text-text-muted">
           {level.pesan}
         </p>
       </div>
 
-      {/* 2. Ringkasan Evaluasi Mingguan AI (Weekly Insight P2) */}
-      <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs lg:col-span-2 flex flex-col justify-between transition-colors">
-        <div>
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-400 font-bold text-xs">
-                AI
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Weekly Ergo-Insight
-                </h3>
-              </div>
-            </div>
-            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-400">
-              Riwayat 14 Hari
-            </span>
-          </div>
-
-          <div className="mt-3.5">
-            {loading ? (
-              <div className="space-y-2 py-1">
-                <div className="h-3.5 w-3/4 animate-pulse rounded-md bg-slate-200 dark:bg-slate-700" />
-                <div className="h-3.5 w-full animate-pulse rounded-md bg-slate-200 dark:bg-slate-700" />
-                <div className="h-3.5 w-5/6 animate-pulse rounded-md bg-slate-200 dark:bg-slate-700" />
-              </div>
-            ) : (
-              <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-200">
-                {ringkasanInsight}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-          <span className="text-[11px] text-slate-400 dark:text-slate-400">
-            Sumber: Analisis Ergo-Coach AI
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-4">
+        <span className="text-[11px] text-text-muted">
+          {totalHariAktif > 0
+            ? `${hariBebasKeluhan} dari ${totalHariAktif} hari bebas keluhan`
+            : "Belum ada hari tercatat"}
+        </span>
+        <Link
+          to="/chat"
+          className="inline-flex items-center gap-0.5 text-xs font-semibold text-primary transition-colors hover:text-primary-dark"
+        >
+          Tanya Ergo-Coach
+          <span className="material-symbols-outlined text-[16px]">
+            chevron_right
           </span>
-          <Link
-            to="/chat"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors"
-          >
-            <span>Konsultasi Keluhan Lengkap</span>
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
+        </Link>
       </div>
-    </div>
+    </section>
   );
 };
 
-export default AiInsightWidget;
+/** Pisahkan narasi menjadi kalimat utuh (titik desimal tidak ikut terpotong). */
+const pecahKalimat = (teks) =>
+  String(teks)
+    .split(/(?<=\.)\s+/)
+    .map((kalimat) => kalimat.trim())
+    .filter(Boolean);
+
+/** Bagi kalimat ke dua kolom seimbang tanpa memotong kalimat. */
+const bagiDuaKolom = (kalimat) => {
+  if (kalimat.length < 2) return [kalimat.join(" "), ""];
+  const totalPanjang = kalimat.reduce((total, k) => total + k.length, 0);
+  let batas = 1;
+  let akumulasi = 0;
+  for (let i = 0; i < kalimat.length - 1; i += 1) {
+    akumulasi += kalimat[i].length;
+    batas = i + 1;
+    if (akumulasi >= totalPanjang / 2) break;
+  }
+  return [
+    kalimat.slice(0, batas).join(" "),
+    kalimat.slice(batas).join(" "),
+  ];
+};
+
+/** Kartu ringkasan evaluasi 14 hari, dibentangkan selebar konten. */
+export const ErgoInsightCard = ({ weeklyInsightData, loading }) => {
+  const ringkasan =
+    weeklyInsightData?.ringkasan ||
+    weeklyInsightData?.data?.ringkasan ||
+    "Evaluasi beban kerja dan keluhan muskuloskeletal mingguan Anda sedang disinkronkan dari riwayat kerja.";
+
+  const [kolomKiri, kolomKanan] = bagiDuaKolom(pecahKalimat(ringkasan));
+
+  return (
+    <section className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-7">
+      {/* Kepala kartu */}
+      <div className="flex items-start justify-between gap-4 border-b border-border-subtle pb-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <span className="material-symbols-outlined text-[20px]">
+              psychology
+            </span>
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-bold tracking-tight text-text-primary lg:text-base">
+              Ringkasan ergo-insight
+            </h2>
+            <p className="mt-0.5 text-[11px] text-text-muted font-body">
+              Evaluasi beban kerja &amp; keluhan dari Ergo-Coach
+            </p>
+          </div>
+        </div>
+        <span className="hidden shrink-0 pt-1 text-[11px] font-medium text-text-muted sm:block">
+          14 hari terakhir
+        </span>
+      </div>
+
+      {/* Isi narasi: kalimat utuh, dibagi dua kolom seimbang */}
+      {loading ? (
+        <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:gap-8">
+          {[0, 1].map((kolom) => (
+            <div key={kolom} className="space-y-2.5">
+              <div className="h-3.5 w-full animate-pulse rounded-md bg-surface-subtle" />
+              <div className="h-3.5 w-11/12 animate-pulse rounded-md bg-surface-subtle" />
+              <div className="h-3.5 w-2/3 animate-pulse rounded-md bg-surface-subtle" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:gap-8">
+          <p className="text-[13px] leading-7 text-text-muted">{kolomKiri}</p>
+          {kolomKanan && (
+            <p className="border-t border-border-subtle pt-4 text-[13px] leading-7 text-text-muted lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+              {kolomKanan}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Kaki kartu */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-4">
+        <span className="text-[11px] text-text-muted">
+          Sumber: analisis Ergo-Coach
+        </span>
+        <Link
+          to="/chat"
+          className="inline-flex items-center gap-0.5 text-xs font-semibold text-primary transition-colors hover:text-primary-dark"
+        >
+          Konsultasi keluhan lengkap
+          <span className="material-symbols-outlined text-[16px]">
+            chevron_right
+          </span>
+        </Link>
+      </div>
+    </section>
+  );
+};
+
+export default EvaluationCard;

@@ -32,10 +32,10 @@ const renderPeringatan = (teks) => {
 /**
  * Judul kecil untuk tiap seksi di dalam kartu AI.
  */
-const JudulSeksi = ({ ikon, children, warna = "text-primary" }) => (
-  <div className={`flex items-center gap-2 mb-2 ${warna}`}>
-    <span className="material-symbols-outlined text-[18px]">{ikon}</span>
-    <h3 className="font-display text-sm font-bold tracking-wide uppercase">
+const JudulSeksi = ({ ikon, children }) => (
+  <div className="mb-2 flex items-center gap-2">
+    <span className="material-symbols-outlined text-[18px] text-primary">{ikon}</span>
+    <h3 className="text-xs font-bold uppercase tracking-wider text-text-main">
       {children}
     </h3>
   </div>
@@ -55,16 +55,16 @@ const AiResponseCard = ({ data, waktu }) => {
 
   return (
     <div
-      className={`rounded-2xl border bg-white shadow-sm overflow-hidden ${
-        isEmergency ? "border-red-300" : "border-border-subtle"
+      className={`overflow-hidden rounded-3xl border bg-surface-card shadow-card ${
+        isEmergency ? "border-red-200" : "border-border-subtle"
       }`}
     >
       {/* Header kartu: identitas AI + waktu + mode analisis */}
       <div
-        className={`flex items-center gap-2 px-4 py-3 border-b ${
+        className={`flex items-center gap-2 border-b px-4 py-3 ${
           isEmergency
-            ? "bg-red-50 border-red-200"
-            : "bg-surface-muted border-border-subtle"
+            ? "border-red-200 bg-red-50"
+            : "border-border-subtle bg-surface-muted"
         }`}
       >
         <div
@@ -77,14 +77,9 @@ const AiResponseCard = ({ data, waktu }) => {
           </span>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <p className="text-sm font-bold text-text-main truncate">
-              Ergo-Coach AI
-            </p>
-            <span className="material-symbols-outlined text-primary text-[14px]">
-              verified
-            </span>
-          </div>
+          <p className="text-sm font-bold text-text-main truncate">
+            Ergo-Coach
+          </p>
           <p className="text-[11px] text-text-soft truncate">
             {isEmergency ? "Mode Darurat" : `Mode ${modeLabel || "Analisis"}`}
             {typeof logCount === "number" && !isEmergency
@@ -166,7 +161,7 @@ const AiResponseCard = ({ data, waktu }) => {
 
         {/* 4. Peringatan Darurat */}
         {peringatan && (
-          <section className="rounded-xl border border-red-200 bg-red-50 p-3 flex gap-2">
+          <section className="rounded-2xl border border-red-200 bg-red-50 p-3 flex gap-2">
             <span className="material-symbols-outlined text-red-600 text-[20px] shrink-0">
               warning
             </span>

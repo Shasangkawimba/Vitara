@@ -1,14 +1,17 @@
 // ============================================================
 // client/src/pages/Dashboard/index.jsx
-// Dasbor Produktivitas vs Kesehatan (Occupational Health PWA)
-// Dirender sesuai rancangan Stitch AI "Dasbor Analisis Performa"
-// Mendukung integrasi P3 (Summary, Korelasi) & P2 (Risk Score, Weekly Insight)
+// Dasbor Produktivitas vs Kesehatan — dibangun ulang mengikuti
+// layar Stitch "Dasbor Produktivitas & Kesehatan":
+//   • Hero band pine dengan sapaan putih
+//   • Timeline mingguan, kartu ringkasan gelap, dua metrik
+//   • Kartu grafik lebar + kartu ergonomi
+// SEMUA ANGKA BERSUMBER DATA API REAL — tanpa data dummy.
 // ============================================================
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 import CorrelationChart from "./components/CorrelationChart";
-import AiInsightWidget from "./components/AiInsightWidget";
+import { EvaluationCard, ErgoInsightCard } from "./components/AiInsightWidget";
 
 const formatRupiah = (angka) => {
   if (angka === null || angka === undefined) return "Rp 0";
@@ -19,78 +22,373 @@ const formatRupiah = (angka) => {
   }).format(angka);
 };
 
+const kunciTanggal = (tanggal) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(tanggal);
+
+const sapaanHari = () => {
+  const jam = new Date().getHours();
+  if (jam < 11) return "Selamat Pagi";
+  if (jam < 15) return "Selamat Siang";
+  if (jam < 19) return "Selamat Sore";
+  return "Selamat Malam";
+};
+
+const bacaNama = () => {
+  try {
+    const stored = localStorage.getItem("user");
+    if (!stored) return "Mitra";
+    const user = JSON.parse(stored);
+    return user?.name ? user.name.trim().split(" ")[0] : "Mitra";
+  } catch {
+    return "Mitra";
+  }
+};
+
+/** Label perubahan periode ini vs periode sebelumnya. */
+const LabelDelta = ({ persen, terang = false }) => {
+  if (persen === null || persen === undefined) {
+    return (
+      <span className={terang ? "text-white/50" : "text-text-muted"}>
+        Periode pertama tercatat
+      </span>
+    );
+  }
+  const naik = persen >= 0;
+  return (
+    <>
+      <span
+        className={
+          naik
+            ? terang
+              ? "font-semibold text-white"
+              : "font-semibold text-primary"
+            : terang
+            ? "font-semibold text-rose-200"
+            : "font-semibold text-status-alert"
+        }
+      >
+        {naik ? "+" : ""}
+        {persen.toFixed(1)}%
+      </span>
+      <span className={terang ? "text-white/50" : "text-text-muted"}>
+        vs periode sebelumnya
+      </span>
+    </>
+  );
+};
+
+/**
+ * Strip 7 hari terakhir bergaya Timeline Stitch.
+ * Interaktif: hari bisa diketuk untuk melihat detail jam–pendapatan–
+ * keluhan; bolt = catat cepat (gandakan log terakhir ke hari ini).
+ */
+const TimelineCard = ({ dataHari, padaRefresh }) => {
+  const strip = useMemo(() => {
+    const hariIni = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const tanggal = new Date(hariIni);
+      tanggal.setDate(hariIni.getDate() - (6 - i));
+      const kunci = kunciTanggal(tanggal);
+      return {
+        tanggal,
+        kunci,
+        inisial: new Intl.DateTimeFormat("id-ID", { weekday: "narrow" }).format(
+          tanggal
+        ),
+        isToday: i === 6,
+        adaLog: (dataHari || []).some((h) => h.tanggal === kunci),
+      };
+    });
+  }, [dataHari]);
+
+  // Hari terpilih (default: hari ini), mode tampilan, dan status catat cepat.
+  const [kunciTerpilih, setKunciTerpilih] = useState(null);
+  const [sedangCatat, setSedangCatat] = useState(false);
+  const [catatPesan, setCatatPesan] = useState(null);
+
+  const kunciHariIni = strip[6]?.kunci;
+  const kunciAktif = kunciTerpilih ?? kunciHariIni;
+  const hariAktif = strip.find((h) => h.kunci === kunciAktif) || strip[6];
+  const dataAktif = (dataHari || []).find((h) => h.tanggal === kunciAktif);
+
+  const labelLengkap = (tanggal) =>
+    new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }).format(tanggal);
+
+  // Catat cepat: gandakan log terakhir ke hari ini, lalu muat ulang data.
+  const catatCepat = async () => {
+    if (sedangCatat) return;
+    setSedangCatat(true);
+    setCatatPesan(null);
+    try {
+      const respons = await api.post("/api/logs/quick-log");
+      if (respons.data?.success) {
+        setCatatPesan({
+          tipe: "sukses",
+          teks: "Log terakhir berhasil digandakan ke hari ini.",
+        });
+        if (padaRefresh) padaRefresh();
+      } else {
+        setCatatPesan({
+          tipe: "error",
+          teks: respons.data?.error || "Gagal mencatat cepat, coba lagi.",
+        });
+      }
+    } catch (err) {
+      setCatatPesan({
+        tipe: "error",
+        teks: "Gagal mencatat cepat — periksa koneksi Anda.",
+      });
+    } finally {
+      setSedangCatat(false);
+    }
+  };
+
+  const kelasLingkar = (hari) =>
+    hari.isToday
+      ? "bg-primary font-bold text-white shadow-xs"
+      : hari.adaLog
+      ? "bg-surface-subtle font-semibold text-primary"
+      : "font-medium text-text-muted";
+
+  return (
+    <section className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
+          Timeline
+        </h2>
+        <div className="flex items-center gap-1 text-text-muted">
+          <button
+            type="button"
+            onClick={catatCepat}
+            disabled={sedangCatat}
+            title="Catat cepat: gandakan log terakhir ke hari ini"
+            aria-label="Catat cepat dari log terakhir"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-surface-subtle hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {sedangCatat ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <span className="material-symbols-outlined text-[19px]">bolt</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {catatPesan && (
+        <div
+          role="status"
+          className={`mb-3 flex items-center gap-2 rounded-2xl px-3 py-2 text-[11px] font-semibold ${
+            catatPesan.tipe === "sukses"
+              ? "bg-primary/10 text-primary-dark"
+              : "bg-red-50 text-red-700"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[15px]">
+            {catatPesan.tipe === "sukses" ? "check_circle" : "error"}
+          </span>
+          <span className="flex-1">{catatPesan.teks}</span>
+          <button
+            type="button"
+            onClick={() => setCatatPesan(null)}
+            aria-label="Tutup pemberitahuan"
+            className="rounded-full p-0.5 transition-colors hover:bg-black/5"
+          >
+            <span className="material-symbols-outlined text-[14px]">close</span>
+          </button>
+        </div>
+      )}
+
+      {/* Strip 7 hari — ketuk hari untuk detail jam · pendapatan · keluhan */}
+        <div className="grid grid-cols-7 items-start text-center">
+          {strip.map((hari) => {
+            const aktif = hari.kunci === kunciAktif;
+            return (
+              <button
+                type="button"
+                key={hari.kunci}
+                onClick={() => setKunciTerpilih(hari.kunci)}
+                aria-pressed={aktif}
+                aria-label={`Detail ${labelLengkap(hari.tanggal)}${
+                  hari.adaLog ? "" : ", belum ada catatan"
+                }`}
+                title={`${labelLengkap(hari.tanggal)}${
+                  hari.adaLog ? "" : " — belum ada catatan"
+                }`}
+                className="flex flex-col items-center gap-1.5 rounded-2xl px-0.5 py-1.5 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              >
+                <span
+                  className={`text-[11px] font-medium ${
+                    hari.isToday ? "font-bold text-primary" : "text-text-muted"
+                  }`}
+                >
+                  {hari.inisial}
+                </span>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs lg:h-9 lg:w-9 ${kelasLingkar(
+                    hari
+                  )} ${
+                    aktif
+                      ? "ring-2 ring-primary ring-offset-2 ring-offset-surface-card"
+                      : ""
+                  }`}
+                >
+                  {hari.tanggal.getDate()}
+                </span>
+                <span className="flex h-1 items-center gap-1">
+                  {hari.isToday ? (
+                    <>
+                      <span className="h-1 w-1 rounded-full bg-primary" />
+                      <span className="h-1 w-1 rounded-full bg-primary" />
+                    </>
+                  ) : hari.adaLog ? (
+                    <span className="h-1 w-1 rounded-full bg-accent-mint" />
+                  ) : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+      {/* Panel detail hari terpilih */}
+      <div className="mt-4 rounded-2xl border border-border-subtle bg-surface-subtle p-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[12px] font-bold capitalize text-text-primary">
+            {hariAktif ? labelLengkap(hariAktif.tanggal) : "-"}
+          </p>
+          {dataAktif?.isPuncak && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-mint/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+              <span className="material-symbols-outlined text-[12px]">trending_up</span>
+              Hari puncak
+            </span>
+          )}
+        </div>
+        {dataAktif && dataAktif.jamKerja > 0 ? (
+          <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-surface-card px-2 py-2.5">
+              <p className="text-[15px] font-bold text-text-primary">
+                {dataAktif.jamKerja}
+                <span className="ml-0.5 text-[10px] font-medium text-text-muted">jam</span>
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium text-text-muted">Jam kerja</p>
+            </div>
+            <div className="rounded-xl bg-surface-card px-2 py-2.5">
+              <p className="truncate text-[13px] font-bold text-text-primary">
+                {formatRupiah(dataAktif.pendapatan)}
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium text-text-muted">Pendapatan</p>
+            </div>
+            <div className="rounded-xl bg-surface-card px-2 py-2.5">
+              <p className="text-[15px] font-bold text-text-primary">
+                {dataAktif.keluhan}
+                <span className="ml-0.5 text-[10px] font-medium text-text-muted">keluhan</span>
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium text-text-muted">Keluhan fisik</p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-[11px] font-medium text-text-muted">
+            Belum ada catatan pada hari tersebut. Ketuk ikon petir untuk mencatat
+            cepat dari log terakhir.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+};
+
 export const DashboardPage = () => {
   const [periode, setPeriode] = useState(7);
   const [summary, setSummary] = useState(null);
-  const [chartData, setChartData] = useState([]);
+  const [chartData, setChartData] = useState(null);
   const [riskScoreData, setRiskScoreData] = useState(null);
   const [weeklyInsightData, setWeeklyInsightData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [gagalMuat, setGagalMuat] = useState(false);
+  const [delta, setDelta] = useState(null);
+  const nama = bacaNama();
 
-  // Ambil data dari backend P3 & P2 (dengan fallback aman sesuai desain Stitch AI)
   const fetchData = async (days) => {
     try {
       setLoading(true);
-      const [resSummary, resCorr, resRisk, resInsight] = await Promise.allSettled([
-        api.get(`/api/dashboard/summary?days=${days}`),
-        api.get(`/api/dashboard/correlation?days=${days}`),
-        api.get("/api/ai/risk-score"),
-        api.get("/api/ai/weekly-insight"),
-      ]);
-
-      // 1. Data Summary Dashboard (P3)
-      if (resSummary.status === "fulfilled" && resSummary.value.data?.success) {
-        setSummary(resSummary.value.data.data);
-      } else {
-        setSummary({
-          totalWorkHours: 42.0,
-          avgIncome: 1450000,
-          riskScore: 65,
-          recoveryIndex: 78,
-          totalLogs: 7,
-          totalOrders: 48,
-          peakDay: "Jumat (9.5 jam)",
-        });
-      }
-
-      // 2. Data Grafik Korelasi (P3)
-      if (resCorr.status === "fulfilled" && resCorr.value.data?.success) {
-        setChartData(resCorr.value.data.data);
-      } else {
-        setChartData([
-          { hari: "Sen", jamKerja: 6.2, keluhan: 1, isPeak: false, heightPercent: 51 },
-          { hari: "Sel", jamKerja: 7.0, keluhan: 1, isPeak: false, heightPercent: 58 },
-          { hari: "Rab", jamKerja: 5.5, keluhan: 0, isPeak: false, heightPercent: 45 },
-          { hari: "Kam", jamKerja: 6.8, keluhan: 1, isPeak: false, heightPercent: 56 },
-          { hari: "Jum", jamKerja: 9.5, keluhan: 3, isPeak: true, heightPercent: 79 },
-          { hari: "Sab", jamKerja: 4.0, keluhan: 0, isPeak: false, heightPercent: 33 },
-          { hari: "Min", jamKerja: 3.0, keluhan: 0, isPeak: false, heightPercent: 25 },
+      setGagalMuat(false);
+      const [resSummary, resSummary2x, resCorr, resRisk, resInsight] =
+        await Promise.allSettled([
+          api.get(`/api/dashboard/summary?days=${days}`),
+          // Dua kali panjang periode → periode sebelumnya = (2×) − (1×)
+          api.get(`/api/dashboard/summary?days=${days * 2}`),
+          api.get(`/api/dashboard/correlation?days=${days}`),
+          api.get("/api/ai/risk-score"),
+          api.get("/api/ai/weekly-insight"),
         ]);
-      }
 
-      // 3. Data Risk Score AI (P2 - API_CONTRACT.md)
-      if (resRisk.status === "fulfilled" && resRisk.value.data?.success) {
-        setRiskScoreData(resRisk.value.data.data);
-      } else {
-        setRiskScoreData({
-          skor: 65,
-          level: "Risiko Sedang",
-          kepercayaan: "sedang",
-          saran: "Beban jam berkendara meningkat menjelang akhir pekan. Lakukan peregangan panggul berkala.",
-        });
-      }
+      setSummary(
+        resSummary.status === "fulfilled" && resSummary.value.data?.success
+          ? resSummary.value.data.data
+          : null
+      );
 
-      // 4. Data Weekly Insight AI (P2 - API_CONTRACT.md)
-      if (resInsight.status === "fulfilled" && resInsight.value.data?.success) {
-        setWeeklyInsightData(resInsight.value.data.data);
-      } else {
-        setWeeklyInsightData({
-          ringkasan:
-            "Jam kerja Anda mencapai puncak di hari Jumat (9.5 jam) yang berkolerasi dengan timbulnya rasa pegal pada area pinggang bawah. Disarankan menambah waktu jeda 5-10 menit setiap 3 trip selesai dan menjaga posisi ergonomis jok motor.",
-        });
-      }
+      const prev =
+        resSummary2x.status === "fulfilled" &&
+        resSummary2x.value.data?.success &&
+        resSummary.status === "fulfilled" &&
+        resSummary.value.data?.success
+          ? {
+              jam:
+                (resSummary2x.value.data.data?.totalWorkHours ?? 0) -
+                (resSummary.value.data.data?.totalWorkHours ?? 0),
+              penghasilan:
+                (resSummary2x.value.data.data?.avgIncome ?? 0) -
+                (resSummary.value.data.data?.avgIncome ?? 0),
+            }
+          : null;
+      const cur =
+        resSummary.status === "fulfilled" && resSummary.value.data?.success
+          ? resSummary.value.data.data
+          : null;
+      setDelta(
+        prev && cur
+          ? {
+              jam:
+                prev.jam > 0
+                  ? ((cur.totalWorkHours - prev.jam) / prev.jam) * 100
+                  : null,
+              penghasilan:
+                prev.penghasilan > 0
+                  ? ((cur.avgIncome - prev.penghasilan) / prev.penghasilan) * 100
+                  : null,
+            }
+          : null
+      );
+
+      setChartData(
+        resCorr.status === "fulfilled" && resCorr.value.data?.success
+          ? resCorr.value.data.data
+          : null
+      );
+
+      setRiskScoreData(
+        resRisk.status === "fulfilled" && resRisk.value.data?.success
+          ? resRisk.value.data.data
+          : null
+      );
+
+      setWeeklyInsightData(
+        resInsight.status === "fulfilled" && resInsight.value.data?.success
+          ? resInsight.value.data.data
+          : null
+      );
     } catch (e) {
-      console.warn("Menggunakan data fallback Stitch AI:", e);
+      console.warn("Gagal memuat data dashboard:", e);
+      setGagalMuat(true);
     } finally {
       setLoading(false);
     }
@@ -100,360 +398,425 @@ export const DashboardPage = () => {
     fetchData(periode);
   }, [periode]);
 
-  // Evaluasi skor risiko aktif untuk KPI Card 3
-  const activeRiskScore = riskScoreData?.skor ?? summary?.riskScore ?? 65;
-  const activeRiskLevel =
-    riskScoreData?.level ||
-    (activeRiskScore >= 70
-      ? "Risiko Tinggi"
-      : activeRiskScore >= 40
-      ? "Risiko Sedang"
-      : "Risiko Rendah");
+  const hariChart = chartData?.hari || [];
+  const activeRiskScore = riskScoreData?.skor ?? null;
+  const activeRiskLevel = riskScoreData?.level ?? null;
+
+  const hariPuncak = useMemo(() => {
+    if (hariChart.length === 0) return null;
+    const puncak = hariChart.reduce((a, b) => (b.jamKerja > a.jamKerja ? b : a));
+    return puncak.jamKerja > 0 ? `${puncak.hari} (${puncak.jamKerja} jam)` : null;
+  }, [hariChart]);
+
+  const statistikBebasKeluhan = useMemo(() => {
+    const hariAktif = hariChart.filter((h) => h.jamKerja > 0);
+    if (hariAktif.length === 0) return { persen: null, jumlah: 0, total: 0 };
+    const bebas = hariAktif.filter((h) => h.keluhan === 0).length;
+    return {
+      persen: Math.round((bebas / hariAktif.length) * 100),
+      jumlah: bebas,
+      total: hariAktif.length,
+    };
+  }, [hariChart]);
+
+  const distribusi = (chartData?.distribusiKeluhan || []).slice(0, 3);
+
+  const rentangTanggal = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+    });
+    const akhir = new Date();
+    const awal = new Date();
+    awal.setDate(awal.getDate() - (periode - 1));
+    return `${fmt.format(awal)} – ${fmt.format(akhir)} ${akhir.getFullYear()}`;
+  }, [periode]);
+
+  const totalJam = summary?.totalWorkHours ?? 0;
+  const rataHarian = totalJam / periode;
+  const skorRisiko = activeRiskScore;
+
+  const unduhRingkasan = () => {
+    const baris = [];
+    baris.push("Ringkasan VITARA Periode " + periode + " Hari");
+    baris.push(`Rentang,${rentangTanggal}`);
+    baris.push(`Total Jam Kerja,${totalJam}`);
+    baris.push(`Rata-rata Penghasilan/Hari,${summary?.avgIncome ?? 0}`);
+    baris.push(`Total Keluhan,${summary?.totalSymptoms ?? 0}`);
+    baris.push(`Jumlah Hari Tercatat,${summary?.totalLogs ?? 0}`);
+    baris.push(`Skor Risiko,${skorRisiko ?? "-"}`);
+    baris.push(`Level Risiko,${activeRiskLevel ?? "-"}`);
+    baris.push("");
+    baris.push("Hari,Tanggal,Jam Kerja,Keluhan,Pendapatan");
+    hariChart.forEach((h) =>
+      baris.push([h.hari, h.tanggal, h.jamKerja, h.keluhan, h.pendapatan].join(","))
+    );
+    const blob = new Blob(["\ufeff" + baris.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vitara-ringkasan-${periode}hari.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Title & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-bold tracking-wider text-cyan-800 uppercase bg-cyan-50 border border-cyan-100/60 px-2 py-0.5 rounded">
-              KESEHATAN KERJA & PERFORMA • MINGGU KE-21
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Dasbor Produktivitas vs Kesehatan
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Analisis korelasi beban jam berkendara dengan keluhan fisik muskuloskeletal.
-          </p>
-        </div>
-
-        {/* Filter & Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 shadow-xs">
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span>20 - 26 Mei 2024</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-500 font-normal">Mgg 21</span>
-          </div>
-
-          <div className="flex items-center rounded-lg bg-slate-200/80 p-0.5 text-xs font-semibold text-slate-700">
-            <button
-              type="button"
-              onClick={() => setPeriode(7)}
-              className={`rounded-md px-2.5 py-1 transition ${
-                periode === 7 ? "bg-white text-cyan-800 shadow-xs" : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              7 Hari
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriode(30)}
-              className={`rounded-md px-2.5 py-1 transition ${
-                periode === 30 ? "bg-white text-cyan-800 shadow-xs" : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              30 Hari
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 1. Top KPI Row: 4 Spacious Minimalist Cards Sesuai Desain Stitch AI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: TOTAL JAM KERJA */}
-        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              TOTAL JAM KERJA
-            </span>
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">
-                {summary ? `${summary.totalWorkHours}` : "42.0"}
-              </span>
-              <span className="text-xs font-medium text-slate-500">Jam / 7 Hari</span>
-            </div>
-            <div className="flex items-center gap-1 mt-1 text-xs">
-              <span className="text-emerald-700 font-semibold">+14.2%</span>
-              <span className="text-slate-400">vs minggu lalu</span>
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Rata-rata Harian</span>
-            <span className="font-semibold text-slate-700">6.0 jam/hari</span>
-          </div>
-        </div>
-
-        {/* Card 2: PERKIRAAN PENGHASILAN */}
-        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              PERKIRAAN PENGHASILAN
-            </span>
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">
-                {summary ? formatRupiah(summary.avgIncome || 1450000) : "Rp 1.450.000"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 mt-1 text-xs">
-              <span className="text-emerald-700 font-semibold">+15.0%</span>
-              <span className="text-slate-400">kinerja optimal</span>
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Aktivitas Narik</span>
-            <span className="font-semibold text-slate-700">48 Tarikan Order</span>
-          </div>
-        </div>
-
-        {/* Card 3: SKOR RISIKO KELELAHAN (Terhubung dengan P2) */}
-        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              SKOR RISIKO KELELAHAN
-            </span>
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">
-                {activeRiskScore}
-              </span>
-              <span className="text-xs text-slate-400">/ 100</span>
-            </div>
-            <div
-              className={`inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full text-xs border ${
-                activeRiskScore >= 70
-                  ? "bg-rose-50 border-rose-200 text-rose-700"
-                  : activeRiskScore >= 40
-                  ? "bg-amber-50 border-amber-200 text-amber-700"
-                  : "bg-emerald-50 border-emerald-200 text-emerald-700"
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  activeRiskScore >= 70
-                    ? "bg-rose-500"
-                    : activeRiskScore >= 40
-                    ? "bg-amber-500"
-                    : "bg-emerald-500"
-                }`}
-              ></span>
-              <span className="font-semibold text-[11px]">
-                {activeRiskLevel}
-              </span>
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Puncak Beban</span>
-            <span className="font-semibold text-slate-700">{summary?.peakDay || "Jumat (9.5 jam)"}</span>
-          </div>
-        </div>
-
-        {/* Card 4: INDEKS PEMULIHAN */}
-        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              INDEKS PEMULIHAN
-            </span>
-            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </div>
-          <div className="my-3">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-cyan-800 tracking-tight">78%</span>
-              <span className="text-xs text-slate-500">stabil</span>
-            </div>
-            <div className="flex items-center gap-1 mt-1 text-xs">
-              <span className="text-emerald-700 font-semibold">Kapasitas Baik</span>
-              <span className="text-slate-400">pasca istirahat</span>
-            </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Fokus Pantauan</span>
-            <span className="font-semibold text-slate-700">Lumbal Bawah</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Main Content Split/Grid (Wide Left / Structured Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Kolom Kiri: Korelasi Jam Kerja vs Keluhan Fisik (7 Kolom) */}
-        <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-xl p-6 shadow-xs flex flex-col justify-between">
+    <div className="w-full">
+      {/* Hero sapaan di atas gradien pine */}
+      <section className="mx-auto w-full max-w-7xl px-5 pb-6 pt-6 text-white lg:px-12 lg:pt-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="font-bold text-base text-slate-900">
-                  Korelasi Jam Kerja vs Keluhan Fisik
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Pemantauan jam narik harian terhadap batas aman ergonomi kerja (8 jam) & indikasi gejala.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 text-xs flex-wrap">
-                <div className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-cyan-700 inline-block"></span>
-                  <span>Jam Aman (≤8j)</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-amber-500 inline-block"></span>
-                  <span>Lembur Puncak (&gt;8j)</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-600">
-                  <span className="w-3 h-0.5 bg-slate-300 inline-block border-t border-dashed border-slate-500"></span>
-                  <span>Batas 8j</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Visualisasi Grafik Interaktif Recharts */}
-            <CorrelationChart data={chartData} loading={loading} />
-          </div>
-
-          {/* Kotak Catatan Korelasi */}
-          <div className="mt-4 p-4 rounded-lg bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-2">
-            <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p>
-                <strong className="font-semibold text-slate-900">Puncak Beban Terlampaui (Jumat 9.5 Jam):</strong> Jam narik berlebih memicu peningkatan nyeri lumbal hingga 40%. Wajib intervensi jeda istirahat berkala.
-              </p>
-            </div>
-            <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-cyan-700 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p>
-                <strong className="font-semibold text-slate-900">Pemulihan Efektif (Sabtu - Minggu):</strong> Penurunan jam kerja terbukti mengembalikan indeks ketahanan fisik tubuh ke angka optimal 78%.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Kolom Kanan: Wawasan Ergonomi Tubuh (5 Kolom) */}
-        <div className="lg:col-span-5 bg-white border border-slate-200/90 rounded-xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div>
-              <h2 className="font-bold text-base text-slate-900">
-                Wawasan Ergonomi Tubuh
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Distribusi beban fisik berdasarkan postur berkendara.
-              </p>
-            </div>
-            <span className="text-[11px] font-semibold text-cyan-800 bg-cyan-50 border border-cyan-100/60 px-2 py-0.5 rounded">
-              Spesialis Okupasi
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+              {rentangTanggal} · {periode} hari
             </span>
-          </div>
-
-          <div className="space-y-4">
-            {/* 1. Lumbal */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-slate-800">Pinggang Bawah (Lumbal)</span>
-                <span className="font-bold text-slate-900">40%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full rounded-full" style={{ width: "40%" }} />
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Pemicu: Getaran sadel motor dan posisi duduk statis &gt; 2 jam.
-              </p>
-            </div>
-
-            {/* 2. Bahu & Leher */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-slate-800">Bahu, Leher & Tengkuk</span>
-                <span className="font-bold text-slate-900">25%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-cyan-700 h-full rounded-full" style={{ width: "25%" }} />
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Pemicu: Beban helm berkelanjutan dan cengkeraman stang kemudi.
-              </p>
-            </div>
-
-            {/* 3. Lutut */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-slate-800">Lutut & Kaki</span>
-                <span className="font-bold text-slate-900">15%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-slate-400 h-full rounded-full" style={{ width: "15%" }} />
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Pemicu: Menahan beban motor saat berhenti di kemacetan lalu lintas.
-              </p>
-            </div>
-          </div>
-
-          {/* Micro-break box */}
-          <div className="p-4 rounded-lg bg-cyan-50/60 border border-cyan-100/80 space-y-1.5">
-            <span className="text-xs font-semibold text-cyan-900">
-              Rekomendasi Micro-Break
-            </span>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Lakukan jeda peregangan 3–5 menit setiap 3 trip selesai. Prioritaskan relaksasi panggul dan peregangan leher untuk mencegah nyeri muskuloskeletal kronis.
+            <h1 className="mt-2 text-[27px] font-bold leading-[1.25] tracking-tight lg:text-[34px]">
+              {sapaanHari()}, {nama}
+            </h1>
+            <p className="mt-1.5 text-sm text-white/70 font-body">
+              Pantau ritme kerja dan kebugaran fisik harianmu.
             </p>
           </div>
 
-          {/* Action buttons */}
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            <Link
-              to="/reminder"
-              className="py-2 px-3 rounded-lg bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-medium text-center transition-colors shadow-xs"
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Segmented control periode */}
+            <div className="glass-pill inline-flex items-center rounded-full p-1">
+              {[7, 30].map((nilai) => (
+                <button
+                  key={nilai}
+                  type="button"
+                  onClick={() => setPeriode(nilai)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                    periode === nilai
+                      ? "bg-white text-primary shadow-xs"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  {nilai} Hari
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={unduhRingkasan}
+              className="glass-pill inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/15"
             >
-              Mulai Peregangan 5 Menit
-            </Link>
-            <Link
-              to="/chat"
-              className="py-2 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium text-center transition-colors"
-            >
-              Konsultasi AI Ergo-Coach
-            </Link>
+              <span className="material-symbols-outlined text-[17px]">download</span>
+              <span className="hidden sm:inline">Unduh Ringkasan</span>
+              <span className="sm:hidden">Unduh</span>
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* 3. Section Milestone Minggu 4: Widget AI Ergo-Insight & Risk Score (Integrasi P2) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-[20px]">
-              psychology
-            </span>
-            <h2 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white uppercase">
-              EVALUASI KONDISI &amp; REKOMENDASI KESEHATAN
-            </h2>
-          </div>
-        </div>
-
-        <AiInsightWidget
-          riskScoreData={riskScoreData}
-          weeklyInsightData={weeklyInsightData}
-          loading={loading}
-        />
       </section>
+
+      <main className="mx-auto w-full max-w-7xl px-5 pb-14 lg:px-12">
+        {gagalMuat && !loading && (
+          <div className="mb-5 flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
+            <span className="material-symbols-outlined text-[18px] text-amber-700">
+              error
+            </span>
+            Beberapa data gagal dimuat dari server. Coba muat ulang halaman.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-7">
+          {/* KIRI: timeline, kartu ringkasan gelap, dua metrik */}
+          <div className="flex flex-col gap-5 lg:col-span-5 lg:gap-6">
+            <TimelineCard dataHari={hariChart} padaRefresh={() => fetchData(periode)} />
+
+            {/* Hero ringkasan hari ini */}
+            <section className="relative overflow-hidden rounded-4xl bg-primary p-5 text-white shadow-hero lg:p-6">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent-mint/15 blur-3xl"
+              />
+              <div className="relative flex items-center justify-between">
+                <span className="rounded-full border border-white/10 bg-white/10 px-3.5 py-1 text-[12px] font-medium text-white/90">
+                  Ringkasan Periode
+                </span>
+                <span className="flex items-center gap-1.5 text-[12px] font-medium text-white/70">
+                  <span className="material-symbols-outlined text-[15px]">
+                    schedule
+                  </span>
+                  {periode} hari terakhir
+                </span>
+              </div>
+
+              <div className="relative mt-5 flex items-center gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+                  <span className="material-symbols-outlined text-[22px] text-accent-mint">
+                    two_wheeler
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-[18px] font-bold tracking-tight">
+                    {loading ? "Memuat…" : `${totalJam.toFixed(1)} Jam Operasi`}
+                  </h2>
+                  <p className="mt-0.5 truncate text-[12px] text-white/70">
+                    {summary?.totalLogs ?? 0} hari tercatat • Rata-rata{" "}
+                    {rataHarian.toFixed(1)} jam/hari
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                to="/logger"
+                className="relative mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-3 text-xs font-semibold text-white transition-all hover:bg-white/15 active:scale-[0.99]"
+              >
+                <span className="material-symbols-outlined text-[17px] text-accent-mint">
+                  check_circle
+                </span>
+                Lihat Evaluasi Lengkap
+              </Link>
+            </section>
+
+            {/* Dua metrik ringkas */}
+            <div className="grid grid-cols-2 gap-3.5 lg:gap-4">
+              <div className="flex flex-col justify-between rounded-3xl border border-border-subtle bg-surface-card p-4 shadow-card lg:p-5">
+                <span className="text-[11px] font-medium text-text-muted">
+                  Total Jam Kerja
+                </span>
+                <div className="mt-2.5">
+                  <div className="text-2xl font-bold tracking-tight text-text-primary">
+                    {loading ? "…" : totalJam.toFixed(1)}{" "}
+                    <span className="text-xs font-normal text-text-muted">Jam</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    Rata-rata {rataHarian.toFixed(1)}j / hari
+                  </p>
+                </div>
+                <div className="mt-2 text-[11px]">
+                  {loading ? (
+                    <span className="text-text-muted">Memuat…</span>
+                  ) : (
+                    <LabelDelta persen={delta?.jam ?? null} />
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-between rounded-3xl border border-border-subtle bg-surface-card p-4 shadow-card lg:p-5">
+                <span className="text-[11px] font-medium text-text-muted">
+                  Skor Risiko
+                </span>
+                <div className="mt-2.5">
+                  <div className="text-2xl font-bold tracking-tight text-text-primary">
+                    {loading ? "…" : skorRisiko === null ? "—" : skorRisiko}
+                    <span className="text-xs font-normal text-text-muted">
+                      {skorRisiko === null ? "" : "/100"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-text-muted">
+                    {activeRiskLevel || "Belum ada data log"}
+                  </p>
+                </div>
+                {/* Skala segmen 10 tick — bukan bar linear generik */}
+                <div
+                  className="mt-2 flex items-center gap-1"
+                  role="img"
+                  aria-label={`Skor risiko ${skorRisiko ?? "-"} dari 100`}
+                >
+                  {Array.from({ length: 10 }).map((_, i) => {
+                    const aktif =
+                      skorRisiko !== null && i < Math.round(skorRisiko / 10);
+                    return (
+                      <span
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-full transition-colors ${
+                          aktif
+                            ? skorRisiko >= 70
+                              ? "bg-status-alert"
+                              : skorRisiko >= 40
+                              ? "bg-amber-500"
+                              : "bg-accent-mint"
+                            : "bg-surface-variant"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Evaluasi kondisi — mengalir di kolom kiri */}
+            <EvaluationCard
+              riskScoreData={riskScoreData}
+              loading={loading}
+              hariBebasKeluhan={statistikBebasKeluhan.jumlah}
+              totalHariAktif={statistikBebasKeluhan.total}
+            />
+          </div>
+
+          {/* KANAN: grafik */}
+          <div className="lg:col-span-7">
+            <section className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-7">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-[17px] font-bold tracking-tight text-text-primary lg:text-lg">
+                    Aktivitas vs Keluhan
+                  </h2>
+                  <p className="mt-0.5 text-xs text-text-muted font-body">
+                    Korelasi durasi kerja dengan intensitas kelelahan fisik
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 text-[11px]">
+                  <span className="flex items-center gap-1.5 font-medium text-text-primary">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
+                    Jam Kerja
+                  </span>
+                  <span className="flex items-center gap-1.5 font-medium text-text-primary">
+                    <span className="h-2.5 w-2.5 rounded-sm bg-accent-terracotta" />
+                    Keluhan
+                  </span>
+                </div>
+              </div>
+
+              <CorrelationChart data={hariChart} loading={loading} />
+
+              <div className="mt-4 rounded-2xl bg-surface-subtle p-4 text-[12px] leading-relaxed text-text-muted">
+                {hariPuncak && hariChart.some((h) => h.jamKerja > 8) ? (
+                  <span className="flex items-start gap-2">
+                    <span className="material-symbols-outlined mt-0.5 shrink-0 text-[17px] text-amber-500">
+                      warning
+                    </span>
+                    <span>
+                      <strong className="font-semibold text-text-primary">
+                        Puncak beban {hariPuncak}:
+                      </strong>{" "}
+                      ada hari yang melewati batas aman 8 jam. Prioritaskan jeda
+                      istirahat berkala.
+                    </span>
+                  </span>
+                ) : (
+                  <span className="flex items-start gap-2">
+                    <span className="material-symbols-outlined mt-0.5 shrink-0 text-[17px] text-accent-mint">
+                      check_circle
+                    </span>
+                    <span>
+                      <strong className="font-semibold text-text-primary">
+                        Dalam batas aman:
+                      </strong>{" "}
+                      {hariChart.length > 0
+                        ? "tidak ada hari dengan jam kerja melewati batas 8 jam pada periode ini."
+                        : "belum ada catatan pada periode ini. Mulai catat harian Anda di menu Catat."}
+                    </span>
+                  </span>
+                )}
+              </div>
+            </section>
+
+            {/* Wawasan ergonomi tubuh — tepat di bawah grafik, tanpa jeda kosong */}
+            <section className="mt-5 flex h-full flex-col rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:mt-6 lg:p-7">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
+                    Wawasan Ergonomi Tubuh
+                  </h2>
+                  <p className="mt-0.5 text-xs text-text-muted font-body">
+                    Distribusi beban fisik dari postur berkendara
+                  </p>
+                </div>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-subtle text-primary">
+                  <span className="material-symbols-outlined text-[19px]">
+                    accessibility_new
+                  </span>
+                </span>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {distribusi.length === 0 ? (
+                  <p className="text-xs text-text-muted">
+                    Belum ada keluhan tercatat pada periode ini.
+                  </p>
+                ) : (
+                  distribusi.map((item, idx) => (
+                    <div key={item.area} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-text-primary">
+                          {item.area}
+                        </span>
+                        <span className="font-bold text-text-primary">
+                          {item.persen}%
+                        </span>
+                      </div>
+                      {/* Deretan manik 10 titik — intensitas bukan bar linear */}
+                      <div
+                        className="flex items-center gap-1.5"
+                        role="img"
+                        aria-label={`${item.area}: ${item.persen} persen`}
+                      >
+                        {Array.from({ length: 10 }).map((_, dot) => (
+                          <span
+                            key={dot}
+                            className={`h-2 w-2 rounded-full transition-colors ${
+                              dot < Math.round(item.persen / 10)
+                                ? idx === 0
+                                  ? "bg-primary"
+                                  : idx === 1
+                                  ? "bg-primary/60"
+                                  : "bg-accent-mint"
+                                : "bg-surface-variant"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-text-muted">
+                        {item.jumlah} keluhan tercatat
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-auto pt-5">
+                <div className="rounded-2xl bg-surface-subtle p-4">
+                  <span className="text-xs font-semibold text-text-primary">
+                    Rekomendasi micro-break
+                  </span>
+                  <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                    Lakukan jeda peregangan 3–5 menit setiap 3 trip selesai.
+                    Prioritaskan relaksasi panggul dan peregangan leher untuk
+                    mencegah nyeri muskuloskeletal kronis.
+                  </p>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2.5">
+                  <Link
+                    to="/reminder"
+                    className="whitespace-nowrap rounded-full bg-primary py-2.5 px-3 text-center text-xs font-semibold text-white transition-colors hover:bg-primary-dark"
+                  >
+                    Peregangan 5 Menit
+                  </Link>
+                  <Link
+                    to="/chat"
+                    className="whitespace-nowrap rounded-full border border-border-subtle bg-surface-card py-2.5 px-3 text-center text-xs font-semibold text-text-primary transition-colors hover:bg-surface-subtle"
+                  >
+                    Tanya Ergo-Coach
+                  </Link>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        {/* Ringkasan ergo-insight selebar konten */}
+        <div className="mt-5 lg:mt-6">
+          <ErgoInsightCard
+            weeklyInsightData={weeklyInsightData}
+            loading={loading}
+          />
+        </div>
+
+        <p className="mt-5 px-1 text-[11px] text-text-muted">
+          Rata-rata pendapatan periode ini:{" "}
+          <span className="font-semibold text-text-primary">
+            {formatRupiah(summary?.avgIncome ?? 0)}
+          </span>{" "}
+          • {summary?.totalSymptoms ?? 0} keluhan dari {summary?.totalLogs ?? 0}{" "}
+          hari tercatat.
+        </p>
+      </main>
     </div>
   );
 };

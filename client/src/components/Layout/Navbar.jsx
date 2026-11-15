@@ -1,30 +1,43 @@
 // ============================================================
 // client/src/components/Layout/Navbar.jsx
-// Header Atas Full Width sesuai Desain Mockup VITARA
+// Header shell VITARA mengikuti desain Stitch:
+//   • Desktop: logo kiri, floating dock pine di tengah (grid 1fr auto 1fr),
+//     bell + toggle tema + profil pill di kanan.
+//   • Mobile: logo kiri; kanan hanya tema + notifikasi + avatar profil ringkas.
+// Halaman Dashboard & Logger memakai hero gelap, sehingga header
+// otomatis berganti menjadi teks putih di atas gradien pine.
 // ============================================================
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NAV_ITEMS } from "./navConfig";
+
+/** Halaman dengan hero band gelap (header putih di atas pine). */
+const HALAMAN_GELAP = ["/dashboard", "/logger", "/chat", "/finder", "/profile", "/reminder"];
+
+const sapaanWaktu = () => {
+  const jam = new Date().getHours();
+  if (jam < 11) return "Selamat pagi";
+  if (jam < 15) return "Selamat siang";
+  if (jam < 19) return "Selamat sore";
+  return "Selamat malam";
+};
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
 
-  // Deteksi scroll halaman
+  // Paksa baca ulang localStorage bila foto profil berubah di halaman Profil.
+  const [, setTiketFoto] = useState(0);
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const sinkron = () => setTiketFoto((t) => t + 1);
+    window.addEventListener("vitara-user-changed", sinkron);
+    return () => window.removeEventListener("vitara-user-changed", sinkron);
   }, []);
 
-  // Inisialisasi tema dari localStorage atau preferensi sistem
+  const gelap = HALAMAN_GELAP.some((path) => location.pathname.startsWith(path));
+
+  // Inisialisasi tema dari localStorage atau preferensi sistem.
   const [isDark, setIsDark] = useState(() => {
     try {
       const storedTheme = localStorage.getItem("theme");
@@ -35,7 +48,6 @@ export const Navbar = () => {
     }
   });
 
-  // Terapkan class "dark" ke elemen root <html>
   useEffect(() => {
     const root = document.documentElement;
     if (isDark) {
@@ -47,11 +59,11 @@ export const Navbar = () => {
     }
   }, [isDark]);
 
-  const toggleDarkMode = () => {
-    setIsDark((prev) => !prev);
-  };
+  // Tutup dropdown saat berpindah halaman.
+  useEffect(() => {
+    setShowDropdown(false);
+  }, [location.pathname]);
 
-  // Ambil data user dari localStorage
   let user = null;
   try {
     const stored = localStorage.getItem("user");
@@ -60,6 +72,17 @@ export const Navbar = () => {
     user = null;
   }
 
+  const inisial = useMemo(() => {
+    if (!user?.name) return "V";
+    return user.name
+      .trim()
+      .split(" ")
+      .slice(0, 2)
+      .map((kata) => kata[0])
+      .join("")
+      .toUpperCase();
+  }, [user?.name]);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -67,172 +90,288 @@ export const Navbar = () => {
     navigate("/login");
   };
 
-  return (
-    <header
-      className={`sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b px-4 sm:px-6 lg:px-8 transition-all duration-300 backdrop-blur-md ${
-        isScrolled
-          ? "bg-white/85 dark:bg-slate-900/85 border-slate-200/80 dark:border-slate-800 shadow-sm"
-          : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
+  const tombolTema = (
+    <button
+      type="button"
+      onClick={() => setIsDark((prev) => !prev)}
+      aria-label={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
+      title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors cursor-pointer ${
+        gelap
+          ? "glass-icon text-white hover:bg-white/20"
+          : "border border-border-subtle bg-surface-card text-text-muted hover:text-primary"
       }`}
     >
-      {/* Kiri: Logo VITARA + DRIVER HEALTH SYSTEM */}
-      <Link to="/dashboard" className="flex items-center gap-2.5 sm:gap-3 group">
-        {/* Logo Gambar Asli VITARA */}
-        <div className="flex items-center justify-center">
-          <img
-            src="/vitara-logo.png"
-            alt="Logo Vitara"
-            className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
-          />
-        </div>
+      <span className="material-symbols-outlined text-[19px]">
+        {isDark ? "light_mode" : "dark_mode"}
+      </span>
+    </button>
+  );
 
-        <div className="flex items-baseline gap-1.5 sm:gap-2">
-          <span className="text-lg sm:text-xl font-black tracking-tight text-slate-800 dark:text-white">
-            VITARA
-          </span>
-          <span className="hidden xs:inline-block text-[9px] sm:text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-400 uppercase">
-            DRIVER HEALTH SYSTEM
-          </span>
-        </div>
+  const tombolNotifikasi = (
+    <Link
+      to="/reminder"
+      aria-label="Pengingat & notifikasi"
+      title="Pengingat & notifikasi"
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+        gelap
+          ? "glass-icon text-white hover:bg-white/20"
+          : "border border-border-subtle bg-surface-card text-text-primary shadow-xs hover:text-primary"
+      }`}
+    >
+      <span className="material-symbols-outlined text-[19px]">notifications</span>
+    </Link>
+  );
+
+  // Menu dropdown profil — dipakai di Desktop (pill penuh) dan
+  // Mobile (avatar + nama) supaya perilaku identik di kedua moda.
+  const menuProfil = (
+    <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-3xl border border-border-subtle bg-surface-card p-1.5 shadow-card">
+      <div className="border-b border-border-subtle px-3.5 py-2.5">
+        <p className="truncate text-xs font-bold text-text-primary">
+          {user?.name || "Pengguna"}
+        </p>
+        <p className="truncate text-[10px] text-text-muted">
+          {user?.phone || "-"}
+        </p>
+      </div>
+      <Link
+        to="/profile"
+        className="mt-1 flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-text-muted transition-colors hover:bg-surface-subtle hover:text-primary"
+      >
+        <span className="material-symbols-outlined text-[17px]">person</span>
+        Profil Saya
       </Link>
+      <Link
+        to="/reminder"
+        className="flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-text-muted transition-colors hover:bg-surface-subtle hover:text-primary"
+      >
+        <span className="material-symbols-outlined text-[17px]">alarm</span>
+        Pengingat kesehatan
+      </Link>
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="flex w-full items-center gap-2 rounded-full px-3.5 py-2 text-left text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+      >
+        <span className="material-symbols-outlined text-[17px]">logout</span>
+        Keluar
+      </button>
+    </div>
+  );
 
-      {/* Kanan: Theme Toggle dan Profil User */}
-      <div className="flex items-center gap-2.5 sm:gap-6">
-        {/* Icon Dark/Light Mode (Moon saat terang, Sun saat gelap) */}
-        <button
-          type="button"
-          onClick={toggleDarkMode}
-          aria-label={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-          title={isDark ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-          className="rounded-xl p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-yellow-400 dark:hover:bg-slate-800 transition cursor-pointer"
+  const profilPill = user ? (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setShowDropdown((prev) => !prev)}
+        className={`flex items-center gap-2.5 rounded-full py-1 pl-1 pr-3.5 transition-colors cursor-pointer ${
+          gelap
+            ? "glass-pill text-white hover:bg-white/15"
+            : "border border-border-subtle bg-surface-card text-text-primary shadow-xs hover:bg-surface-subtle"
+        }`}
+      >
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-bold tracking-tight ${
+            gelap
+              ? "border border-white/25 bg-white/20 text-white"
+              : "bg-primary/10 text-primary"
+          }`}
         >
-          {isDark ? (
-            /* Icon Matahari (Sun) untuk beralih ke Light Mode */
-            <svg
-              className="h-5 w-5 text-yellow-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-              />
-            </svg>
+          {user.photo ? (
+            <img
+              src={user.photo}
+              alt={`Foto ${user.name || "profil"}`}
+              className="h-full w-full object-cover"
+            />
           ) : (
-            /* Icon Bulan (Moon) untuk beralih ke Dark Mode */
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-              />
-            </svg>
+            inisial
           )}
-        </button>
+        </span>
+        <span className="hidden text-left leading-tight sm:block">
+          <span
+            className={`block text-[9px] font-medium ${
+              gelap ? "text-white/65" : "text-text-muted"
+            }`}
+          >
+            {sapaanWaktu()}
+          </span>
+          <span className="block max-w-[110px] truncate text-[11px] font-semibold">
+            {user.name || "Pengguna VITARA"}
+          </span>
+        </span>
+      </button>
 
-        {/* User Profile Pill / Menu */}
-        <div className="relative pl-2">
-          {user ? (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowDropdown((prev) => !prev)}
-                className="flex items-center gap-3 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 p-1 transition cursor-pointer"
-              >
-                {/* Avatar Bulat Biru Muda */}
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+      {showDropdown && menuProfil}
+    </div>
+  ) : (
+    <div className="flex items-center gap-2">
+      <Link
+        to="/login"
+        className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+          gelap
+            ? "glass-pill text-white hover:bg-white/15"
+            : "bg-primary text-white hover:bg-primary-dark"
+        }`}
+      >
+        Masuk
+      </Link>
+    </div>
+  );
+
+  // Mobile: avatar + nama depan di sampingnya + dropdown yang sama dengan Desktop.
+  const namaDepan = user?.name ? user.name.trim().split(" ")[0] : "";
+  const profilMobile = user ? (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setShowDropdown((prev) => !prev)}
+        aria-label="Buka menu profil"
+        aria-expanded={showDropdown}
+        title="Buka menu profil"
+        className={`flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2 transition-colors ${
+          gelap
+            ? "glass-icon text-white hover:bg-white/15"
+            : "border border-border-subtle bg-surface-card text-text-primary shadow-xs hover:bg-surface-subtle"
+        }`}
+      >
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[11px] font-bold tracking-tight ${
+            gelap
+              ? "border border-white/25 bg-white/20 text-white"
+              : "bg-primary/10 text-primary"
+          }`}
+        >
+          {user.photo ? (
+            <img
+              src={user.photo}
+              alt={`Foto ${user.name || "profil"}`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            inisial
+          )}
+        </span>
+        <span className="max-w-[92px] truncate text-[12px] font-semibold">
+          {namaDepan}
+        </span>
+        <span
+          className={`material-symbols-outlined shrink-0 text-[16px] transition-transform duration-200 ${
+            showDropdown ? "rotate-180" : ""
+          } ${gelap ? "text-white/70" : "text-text-muted"}`}
+        >
+          expand_more
+        </span>
+      </button>
+
+      {showDropdown && menuProfil}
+    </div>
+  ) : (
+    <Link
+      to="/login"
+      className="rounded-full bg-primary px-3.5 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-primary-dark"
+    >
+      Masuk
+    </Link>
+  );
+
+  return (
+    <header className="relative z-40 w-full">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 pb-2 pt-4 lg:px-12 lg:pt-6">
+        {/* Kiri: brand — selalu tampil (ikon + teks) */}
+        <div className="col-start-1 flex items-center justify-self-start">
+          <Link
+            to="/dashboard"
+            className="group flex items-center gap-2.5"
+            aria-label="VITARA — beranda"
+          >
+            <span
+              className={`flex h-9 w-9 items-center justify-center rounded-full lg:h-10 lg:w-10 ${
+                gelap
+                  ? "glass-icon text-white"
+                  : "border border-border-subtle bg-surface-card text-primary shadow-xs"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">vital_signs</span>
+            </span>
+            <span
+              className={`font-display text-[17px] font-bold tracking-tight lg:text-lg ${
+                gelap ? "text-white" : "text-text-primary"
+              }`}
+            >
+              VITARA
+            </span>
+          </Link>
+        </div>
+
+        {/* Desktop: floating dock navigasi di tengah */}
+        <nav
+          aria-label="Navigasi utama VITARA"
+          className={`col-start-2 hidden items-center gap-1 rounded-full border p-1.5 lg:flex ${
+            gelap
+              ? "border-white/10 bg-[#122c2a]/90 shadow-hero backdrop-blur-md"
+              : "border-border-subtle bg-surface-card/95 shadow-card backdrop-blur-md"
+          }`}
+        >
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={item.labelPanjang}
+              aria-label={item.labelPanjang}
+              className={({ isActive }) =>
+                `flex min-w-[54px] flex-col items-center justify-center gap-[3px] rounded-2xl px-3 py-1.5 transition-colors ${
+                  isActive
+                    ? gelap
+                      ? "bg-[#f7faf9] text-[#183b38] shadow-xs"
+                      : "bg-primary text-white shadow-xs"
+                    : gelap
+                    ? "text-white/60 hover:text-white"
+                    : "text-text-muted hover:bg-surface-subtle hover:text-primary"
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className="material-symbols-outlined text-[19px]"
+                    style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                    aria-hidden="true"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.8"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-
-                <div className="hidden sm:flex flex-col text-left">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                      {user.name ? user.name.split(" ")[0] : "Pengguna"}
-                    </span>
-                    {/* Chevron Down */}
-                    <svg
-                      className="h-3.5 w-3.5 text-slate-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-400 leading-tight">
-                    {user.occupation || "Driver"}
+                    {item.ikon}
                   </span>
-                </div>
-              </button>
-
-              {/* Dropdown Menu Logout */}
-              {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 shadow-lg z-50">
-                  <div className="px-3.5 py-2 border-b border-slate-100 dark:border-slate-700">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {user.name || "Pengguna"}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {user.phone || "-"}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="w-full text-left px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 transition cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Keluar (Logout)</span>
-                  </button>
-                </div>
+                  <span className="text-[10px] font-semibold leading-none tracking-wide">
+                    {item.label}
+                  </span>
+                </>
               )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Link
-                to="/login"
-                className="rounded-xl bg-[#cce3ed] hover:bg-[#b8d8e5] text-slate-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold transition shadow-2xs whitespace-nowrap"
-              >
-                Masuk
-              </Link>
-              <Link
-                to="/register"
-                className="inline-block rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium transition whitespace-nowrap"
-              >
-                Daftar
-              </Link>
-            </div>
-          )}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Kanan: notifikasi, tema, profil */}
+        <div className="col-start-3 flex items-center justify-end gap-2">
+          <div className="hidden items-center gap-2 lg:flex">
+            {tombolNotifikasi}
+            {tombolTema}
+          </div>
+          <div className="hidden lg:block">{profilPill}</div>
+
+          {/* Mobile actions */}
+          <div className="flex items-center gap-1.5 lg:hidden">
+            {tombolTema}
+            {tombolNotifikasi}
+            {profilMobile}
+          </div>
         </div>
       </div>
+
+      {/* Garis tipis pemisah pada halaman terang */}
+      {!gelap && (
+        <div className="mx-auto w-full max-w-7xl px-5 lg:px-12">
+          <div className="h-px w-full bg-border-subtle" />
+        </div>
+      )}
     </header>
   );
 };

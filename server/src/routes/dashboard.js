@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const analyticsService = require("../services/analyticsService");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Validasi query parameter menggunakan Zod secara aman (fallback jika zod belum di-install)
 let z;
@@ -42,14 +43,18 @@ const validateQuery = (query) => {
  * GET /api/dashboard/summary
  * Mengembalikan ringkasan total jam kerja, rata-rata pendapatan, dan keluhan
  */
-router.get("/summary", async (req, res) => {
+router.get("/summary", authenticateToken, async (req, res) => {
   try {
     const { data, error } = validateQuery(req.query);
     if (error) {
       return res.status(400).json({ success: false, error });
     }
 
-    const userId = req.user?.id || data.userId || null;
+    // Data real per-user: userId WAJIB dari JWT, bukan dari query
+    const userId = req.user?.id || null;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Pengguna tidak terautentikasi." });
+    }
     const summaryData = await analyticsService.getDashboardSummary(userId, data.days);
     return res.json({ success: true, data: summaryData });
   } catch (err) {
@@ -65,14 +70,17 @@ router.get("/summary", async (req, res) => {
  * GET /api/dashboard/correlation
  * Mengembalikan data relasi jam kerja vs keluhan fisik untuk visualisasi grafik
  */
-router.get("/correlation", async (req, res) => {
+router.get("/correlation", authenticateToken, async (req, res) => {
   try {
     const { data, error } = validateQuery(req.query);
     if (error) {
       return res.status(400).json({ success: false, error });
     }
 
-    const userId = req.user?.id || data.userId || null;
+    const userId = req.user?.id || null;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Pengguna tidak terautentikasi." });
+    }
     const correlationData = await analyticsService.getCorrelationData(userId, data.days);
     return res.json({ success: true, data: correlationData });
   } catch (err) {
@@ -88,14 +96,17 @@ router.get("/correlation", async (req, res) => {
  * GET /api/dashboard/trend
  * Mengembalikan data tren keluhan dan durasi kerja
  */
-router.get("/trend", async (req, res) => {
+router.get("/trend", authenticateToken, async (req, res) => {
   try {
     const { data, error } = validateQuery(req.query);
     if (error) {
       return res.status(400).json({ success: false, error });
     }
 
-    const userId = req.user?.id || data.userId || null;
+    const userId = req.user?.id || null;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Pengguna tidak terautentikasi." });
+    }
     const trendData = await analyticsService.getTrendData(userId, data.days);
     return res.json({ success: true, data: trendData });
   } catch (err) {
