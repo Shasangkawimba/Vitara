@@ -22,10 +22,14 @@ api.interceptors.request.use((config) => {
 
 // Interceptor 401: token tidak valid → bersihkan & tendang ke halaman login.
 // CATATAN P1: pastikan key "token" ini sama dengan yang dipakai saat menyimpan JWT.
+// Pengecualian: endpoint login/register yang gagal TIDAK boleh menendang ke /login,
+// karena user belum punya token dan halaman harus tetap menampilkan pesan errornya.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || "";
+    const adalahEndpointAuth = url.includes("/auth/login") || url.includes("/auth/register");
+    if (error.response?.status === 401 && !adalahEndpointAuth) {
       localStorage.removeItem("token");
       window.location.href = "/login";
     }

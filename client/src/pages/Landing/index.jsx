@@ -63,9 +63,11 @@ const Reveal = ({ children, delay = 0, className = "", as: Tag = "div" }) => {
 
 /* ---------- Tombol pil + panah bundar menempel (gaya Stack) ----------
    Varian ghost memakai satu pil outline utuh dengan panah di dalamnya,
-   agar tidak ada dua bulatan yang saling menindih di atas gradien. */
-const PillButton = ({ to, href, variant = "dark", children }) => {
+   agar tidak ada dua bulatan yang saling menindih di atas gradien.
+   size="sm" dipakai di header mobile agar muat berdampingan dengan Masuk. */
+const PillButton = ({ to, href, variant = "dark", size = "normal", children }) => {
   const isGhost = variant === "ghost";
+  const kecil = size === "sm";
   const padat =
     variant === "dark"
       ? "bg-[#163532] text-[#f2f5f4] group-hover:bg-[#23524e]"
@@ -80,13 +82,18 @@ const PillButton = ({ to, href, variant = "dark", children }) => {
       </span>
     );
   } else {
+    const kelasPil = kecil
+      ? "h-10 pl-4 pr-3 text-[11px] tracking-[0.13em] sm:h-14 sm:pl-6 sm:pr-5 sm:text-[13px] sm:tracking-[0.14em]"
+      : "h-12 pl-6 pr-5 text-xs sm:h-14 sm:text-[13px]";
+    const kelasLingkar = kecil ? "-ml-1.5 h-10 w-10 sm:-ml-2 sm:h-14 sm:w-14" : "-ml-2 h-12 w-12 sm:h-14 sm:w-14";
+    const kelasIkon = kecil ? "text-[18px] sm:text-[22px]" : "text-[20px] sm:text-[22px]";
     isi = (
       <>
-        <span className={`inline-flex h-12 items-center whitespace-nowrap rounded-full pl-6 pr-5 text-xs font-bold uppercase tracking-[0.14em] transition-colors duration-300 sm:h-14 sm:text-[13px] ${padat}`}>
+        <span className={`inline-flex items-center whitespace-nowrap rounded-full font-bold uppercase transition-colors duration-300 ${kelasPil} ${padat}`}>
           {children}
         </span>
-        <span className={`-ml-2 inline-flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 group-hover:translate-x-1 sm:h-14 sm:w-14 ${padat}`}>
-          <span className="material-symbols-outlined text-[20px] sm:text-[22px]">arrow_forward</span>
+        <span className={`inline-flex items-center justify-center rounded-full transition-all duration-300 group-hover:translate-x-1 ${kelasLingkar} ${padat}`}>
+          <span className={`material-symbols-outlined ${kelasIkon}`}>arrow_forward</span>
         </span>
       </>
     );
@@ -199,27 +206,27 @@ export default function LandingPage() {
           headerSembunyi ? "-translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="VITARA beranda">
-            <span className="glass-icon flex h-9 w-9 items-center justify-center rounded-full text-white">
-              <span className="material-symbols-outlined text-[18px]">vital_signs</span>
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
+          <Link to="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5" aria-label="VITARA beranda">
+            <span className="glass-icon flex h-8 w-8 items-center justify-center rounded-full text-white sm:h-9 sm:w-9">
+              <span className="material-symbols-outlined text-[17px] sm:text-[18px]">vital_signs</span>
             </span>
-            <span className="font-display text-[17px] font-bold tracking-tight text-white lg:text-lg">VITARA</span>
+            <span className="font-display text-[16px] font-bold tracking-tight text-white sm:text-[17px] lg:text-lg">VITARA</span>
           </Link>
-          <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-2 sm:gap-5">
             <button
               type="button"
               onClick={() => setGelap((v) => !v)}
               aria-label={gelap ? "Ganti ke mode terang" : "Ganti ke mode gelap"}
               title={gelap ? "Ganti ke mode terang" : "Ganti ke mode gelap"}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-white/90 transition hover:border-white/60 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white/90 transition hover:border-white/60 hover:text-white sm:h-9 sm:w-9"
             >
-              <span className="material-symbols-outlined text-[18px]">{gelap ? "light_mode" : "dark_mode"}</span>
+              <span className="material-symbols-outlined text-[17px] sm:text-[18px]">{gelap ? "light_mode" : "dark_mode"}</span>
             </button>
-            <Link to="/login" className="link-grow hidden text-sm font-medium text-white/75 transition-colors hover:text-white sm:inline-flex">
+            <Link to="/login" className="link-grow whitespace-nowrap text-xs font-semibold text-white/80 transition-colors hover:text-white sm:text-sm sm:font-medium">
               Masuk
             </Link>
-            <PillButton to="/register" variant="light">Daftar</PillButton>
+            <PillButton to="/register" variant="light" size="sm">Daftar</PillButton>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 h-[2px] w-full bg-transparent" aria-hidden="true">
@@ -229,7 +236,7 @@ export default function LandingPage() {
 
       {/* ============ HERO (di atas gradien hijau-putih khas VITARA) ============ */}
       <section className="hero-gradient-landing overflow-hidden">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-end gap-10 px-5 pb-14 pt-24 sm:px-8 sm:pt-28 lg:grid-cols-12 lg:gap-8 lg:pb-20 lg:pt-36">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-5 pb-14 pt-24 sm:gap-10 sm:px-8 sm:pt-28 lg:grid-cols-12 lg:gap-8 lg:items-end lg:pb-20 lg:pt-36">
           <div className="lg:col-span-7">
             <h1 className="font-display text-[2.35rem] font-extrabold leading-[1.02] tracking-tight text-white sm:text-6xl lg:text-[5rem]">
               {KATA_HERO.map((kata, i) => (
@@ -252,11 +259,11 @@ export default function LandingPage() {
               <PillButton href="#cara-kerja" variant="ghost">Lihat cara kerja</PillButton>
             </div>
           </div>
-          <div className="lg:col-span-5">
+          <div className="order-first lg:order-none lg:col-span-5">
             <img
               src="/hero-ojol.png"
               alt="Ilustrasi line-art pengendara motor ojek dengan kotak pengantaran dan bubble bertuliskan Pegal?"
-              className="ml-auto h-80 w-auto max-w-full sm:h-96 lg:h-[480px]"
+              className="mx-auto h-96 w-auto max-w-full sm:h-[420px] lg:ml-auto lg:mr-0 lg:h-[480px]"
             />
           </div>
         </div>

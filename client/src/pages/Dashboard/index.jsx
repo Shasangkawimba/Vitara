@@ -436,6 +436,11 @@ export const DashboardPage = () => {
   const rataHarian = totalJam / periode;
   const skorRisiko = activeRiskScore;
 
+  /* Unduh Ringkasan: butuh minimal 1 log di periode terpilih.
+     Tanpa itu CSV hanya berisi header (membingungkan).
+     Tidak dipatok 7 log/hari agar pengguna baru tetap bisa ekspor data. */
+  const bisaUnduh = (summary?.totalLogs ?? 0) > 0;
+
   const unduhRingkasan = () => {
     const baris = [];
     baris.push("Ringkasan VITARA Periode " + periode + " Hari");
@@ -501,12 +506,28 @@ export const DashboardPage = () => {
             <button
               type="button"
               onClick={unduhRingkasan}
-              className="glass-pill inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/15"
+              disabled={loading || !bisaUnduh}
+              title={
+                bisaUnduh
+                  ? "Unduh ringkasan CSV periode ini"
+                  : "Catat minimal 1 hari dulu untuk mengunduh ringkasan"
+              }
+              aria-label={
+                bisaUnduh
+                  ? "Unduh ringkasan CSV periode ini"
+                  : "Unduh dinonaktifkan: belum ada catatan pada periode ini"
+              }
+              className="glass-pill inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
             >
               <span className="material-symbols-outlined text-[17px]">download</span>
               <span className="hidden sm:inline">Unduh Ringkasan</span>
               <span className="sm:hidden">Unduh</span>
             </button>
+            {!loading && !bisaUnduh && (
+              <span className="w-full text-[11px] font-medium text-white/60">
+                Catat minimal 1 hari dulu untuk mengunduh ringkasan.
+              </span>
+            )}
           </div>
         </div>
       </section>

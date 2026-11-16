@@ -3,12 +3,13 @@
 // Form masuk mitra VITARA.
 // Dikelola oleh P1 (Auth & Logger).
 // ============================================================
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 
 export default function Login({ onSwitchToRegister }) {
   const navigate = useNavigate();
+  const passwordRef = useRef(null);
 
   // State Form
   const [formData, setFormData] = useState({
@@ -26,6 +27,15 @@ export default function Login({ onSwitchToRegister }) {
       [e.target.name]: e.target.value,
     }));
     if (errorMessage) setErrorMessage("");
+  };
+
+  /* Kegagalan login (salah email maupun salah sandi):
+     hanya kolom sandi yang dikosongkan, email tetap utuh,
+     pesan error tetap tampil, dan fokus kembali ke kolom sandi. */
+  const gagalLogin = (pesan) => {
+    setErrorMessage(pesan);
+    setFormData((prev) => ({ ...prev, password: "" }));
+    passwordRef.current?.focus();
   };
 
   const handleSubmit = async (e) => {
@@ -53,7 +63,7 @@ export default function Login({ onSwitchToRegister }) {
         // Navigasi ke halaman Logger
         navigate("/logger");
       } else {
-        setErrorMessage(
+        gagalLogin(
           response.data?.error || "Gagal masuk. Silakan periksa kembali data Anda."
         );
       }
@@ -61,7 +71,7 @@ export default function Login({ onSwitchToRegister }) {
       const msg =
         err.response?.data?.error ||
         "Gagal terhubung ke server. Pastikan backend sudah berjalan.";
-      setErrorMessage(msg);
+      gagalLogin(msg);
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +147,9 @@ export default function Login({ onSwitchToRegister }) {
               value={formData.password}
               onChange={handleChange}
               placeholder="Masukkan kata sandi"
+              autoComplete="current-password"
               required
+              ref={passwordRef}
               className="w-full bg-transparent py-3 sm:py-2.5 pl-11 pr-11 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
             />
             <button
