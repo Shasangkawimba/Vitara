@@ -11,7 +11,23 @@ const cors = require("cors");
 const app = express();
 
 // Middleware dasar
-app.use(cors());
+// CORS produksi: batasi hanya ke domain frontend di ALLOWED_ORIGIN (pisah koma).
+// Bila belum diset, perilaku lama (terbuka) dipertahankan agar tidak merusak
+// anggota tim lain. Request tanpa header Origin (curl, health check,
+// server-to-server) selalu diizinkan.
+const asalDiizinkan = String(process.env.ALLOWED_ORIGIN || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const corsOptions = {
+  origin: (asal, cb) => {
+    if (!asal) return cb(null, true); // tanpa Origin: curl / health check / antar-server
+    if (asalDiizinkan.length === 0) return cb(null, true); // belum dibatasi
+    if (asalDiizinkan.includes(asal)) return cb(null, true);
+    return cb(null, false); // asal tidak terdaftar: tanpa header ACAO / preflight 403
+  },
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Endpoint Utama / Root & Health Check
