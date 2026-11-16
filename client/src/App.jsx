@@ -1,13 +1,14 @@
 // ============================================================
-// client/src/App.jsx — HAK MILIK MUTLAK P3
+// client/src/App.jsx - HAK MILIK MUTLAK P3
 // Anggota lain DILARANG mengedit file ini (lihat AGENTS.md aturan emas no. 3).
 // Untuk sementara, setiap rute menggunakan placeholder. Pemilik halaman
 // (P1, P2, P4) membuat halaman di folder masing-masing, kemudian P3
 // akan menghubungkan import komponen halaman tersebut ke file App.jsx ini.
 // ============================================================
 import React from "react";
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import Layout from "./components/Layout";
+import LandingPage from "./pages/Landing";
 import DashboardPage from "./pages/Dashboard";
 import ReminderPage from "./pages/Reminder";
 import FinderPage from "./pages/Finder";
@@ -112,31 +113,31 @@ const NotFoundPage = () => {
 function App() {
   return (
     <Routes>
-      {/* 1. Halaman Publik / Auth (Tanpa Layout Shell) */}
+      {/* 1. Halaman Publik / Auth / Landing (Tanpa Layout Shell) */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<AuthPage initialMode="login" />} />
       <Route path="/register" element={<AuthPage initialMode="register" />} />
 
       {/* 2. Halaman Internal Aplikasi (Dibungkus Layout Shell: Navbar & Sidebar) */}
       <Route element={<Layout />}>
-        {/* Rute Awal: Arahkan ke Dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Rute Awal ditangani oleh LandingPage di atas */}
 
-        {/* Rute Dashboard — Tanggung Jawab P3 */}
+        {/* Rute Dashboard - Tanggung Jawab P3 */}
         <Route path="/dashboard" element={<DashboardPage />} />
 
-        {/* Rute Catatan Harian (Logger) — Tanggung Jawab P1 */}
+        {/* Rute Catatan Harian (Logger) - Tanggung Jawab P1 */}
         <Route path="/logger" element={<Logger />} />
 
-        {/* Rute Ergo-Coach AI (Chat) — Tanggung Jawab P2 */}
+        {/* Rute Ergo-Coach AI (Chat) - Tanggung Jawab P2 */}
         <Route path="/chat" element={<ChatPage />} />
 
-        {/* Rute Finder Fasilitas Kesehatan — Tanggung Jawab P4 */}
+        {/* Rute Finder Fasilitas Kesehatan - Tanggung Jawab P4 */}
         <Route path="/finder" element={<FinderPage />} />
 
-        {/* Rute Pengingat (Reminder) — Tanggung Jawab P4 */}
+        {/* Rute Pengingat (Reminder) - Tanggung Jawab P4 */}
         <Route path="/reminder" element={<ReminderPage />} />
 
-        {/* Rute Profil Pengguna — milik bersama, mengikuti shell P3 */}
+        {/* Rute Profil Pengguna - milik bersama, mengikuti shell P3 */}
         <Route path="/profile" element={<ProfilePage />} />
 
         {/* Catch-all 404 di dalam layout */}

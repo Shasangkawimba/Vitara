@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400..700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
 @import "leaflet/dist/leaflet.css";
 
 @tailwind base;
@@ -45,7 +45,7 @@
 }
 
 @layer utilities {
-  /* Tekstur kanvas — garis kontur organik & titik halus menimpa sage-white.
+  /* Tekstur kanvas - garis kontur organik & titik halus menimpa sage-white.
      Mengikuti filosofi "Organic Precision" DESIGN.md; dibuat dari SVG
      data-URI agar tanpa aset eksternal dan tetap ringan di mobile. */
   .bg-tekstur-kanvas {
@@ -63,7 +63,7 @@
     background-size: 320px 320px;
   }
 
-  /* Latar gradien pine yang memudar ke canvas — dipakai halaman
+  /* Latar gradien pine yang memudar ke canvas - dipakai halaman
      Dashboard & Logger (persis seperti hero band pada desain Stitch).
      Dilapisi garis kontur putih sangat tipis agar tidak polos. */
   .hero-gradient {
@@ -110,7 +110,7 @@
 }
 
 /* ============================================================
-   Dark Mode — palet pine gelap yang konsisten dengan canvas.
+   Dark Mode - palet pine gelap yang konsisten dengan canvas.
    Override memakai !important agar komponen lama ikut tema.
    ============================================================ */
 .dark body {
@@ -118,7 +118,7 @@
   color: #eef4f2 !important;
 }
 
-/* Tekstur kanvas gelap — kontur mint pucat di atas midnight forest. */
+/* Tekstur kanvas gelap - kontur mint pucat di atas midnight forest. */
 .dark .bg-tekstur-kanvas {
   background-color: #0b1412;
   background-image:
@@ -160,7 +160,7 @@
   background-color: #1d2e29 !important;
 }
 
-/* Varian opacity surface-subtle (dipakai Chat/Reminder/Logger/Finder) —
+/* Varian opacity surface-subtle (dipakai Chat/Reminder/Logger/Finder) -
    sebelumnya jatuh ke nilai terang dan "menabrak" di dark mode. */
 .dark .bg-surface-subtle\/50,
 .dark .bg-surface-subtle\/60,
@@ -361,4 +361,161 @@
   background-color: #0b1412 !important;
   border-color: #263834 !important;
   color: #ffffff !important;
+}
+
+/* Landing page: gradien hijau-putih yang sama, namun fade ke kanvas
+   lebih lama di bagian atas agar teks & ilustrasi putih tetap terbaca. */
+.hero-gradient-landing {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.055' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.05'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(
+      180deg,
+      #0d2422 0%,
+      #163532 38%,
+      #1d4a45 58%,
+      #3f6660 74%,
+      #8fb0aa 88%,
+      #f2f5f4 100%
+    );
+  background-size: 320px 320px, auto;
+  background-repeat: repeat, no-repeat;
+}
+.dark .hero-gradient-landing {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.05' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.045'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(
+      180deg,
+      #08110f 0%,
+      #0f2523 42%,
+      #173c38 62%,
+      #234a45 80%,
+      #0b1412 100%
+    );
+  background-size: 320px 320px, auto;
+  background-repeat: repeat, no-repeat;
+}
+
+/* ============================================================
+   Landing page - tipografi editorial + denyut ECG halus
+   ============================================================ */
+/* Serif hangat untuk headline landing (gaya editorial, bukan sans korporat) */
+.font-editorial {
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+/* Denyut ECG - garis digambar ulang perlahan, hiasan tunggal di hero */
+@keyframes pulseDraw {
+  0% { stroke-dashoffset: 900; }
+  55% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+.pulse-anim {
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: pulseDraw 3.2s ease-out infinite;
+}
+
+/* ============ Interaksi & animasi landing ============ */
+/* Reveal saat scroll: naik + memudar, sekali saja */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Kata per kata di headline hero */
+@keyframes wordUp {
+  from { opacity: 0; transform: translateY(0.55em); }
+  to { opacity: 1; transform: none; }
+}
+.hero-word {
+  display: inline-block;
+  opacity: 0;
+  animation: wordUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Gelembung chat masuk dari bawah */
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.bubble-in {
+  animation: bubbleIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Kursor mengetik */
+@keyframes caretBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret-blink {
+  animation: caretBlink 0.9s step-end infinite;
+}
+
+/* Penanda gulir di hero */
+@keyframes scrollHint {
+  0% { transform: translateY(-100%); }
+  60%, 100% { transform: translateY(220%); }
+}
+.scroll-hint-dot {
+  animation: scrollHint 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Garis bawah tumbuh untuk link */
+.link-grow {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1.5px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-grow:hover {
+  background-size: 100% 1.5px;
+}
+
+/* Panel percakapan: tinggi stabil agar tidak melompat */
+.chat-stage {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+
+/* Warna seleksi teks */
+::selection {
+  background: #2fa58f;
+  color: #ffffff;
+}
+
+/* Gulir mulus untuk anchor */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-anim,
+  .bubble-in,
+  .caret-blink,
+  .scroll-hint-dot {
+    animation: none !important;
+  }
+  .hero-word {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }

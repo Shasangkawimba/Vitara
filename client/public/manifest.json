@@ -1,11 +1,11 @@
 {
-  "name": "VITARA — Asisten Kesehatan Kerja",
+  "name": "VITARA - Asisten Kesehatan Kerja",
   "short_name": "VITARA",
   "description": "Aplikasi asisten kesehatan dan keselamatan kerja mandiri untuk pekerja",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#059669",
+  "background_color": "#163532",
+  "theme_color": "#163532",
   "orientation": "portrait-primary",
   "icons": [
     {
