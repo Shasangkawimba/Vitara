@@ -76,7 +76,7 @@ const PillButton = ({ to, href, variant = "dark", size = "normal", children }) =
   let isi;
   if (isGhost) {
     isi = (
-      <span className="inline-flex h-12 items-center gap-3 whitespace-nowrap rounded-full border border-white/40 pl-6 pr-5 text-xs font-bold uppercase tracking-[0.14em] text-white transition-colors duration-300 group-hover:bg-white/10 sm:h-14 sm:text-[13px]">
+      <span className="inline-flex h-12 items-center gap-3 whitespace-nowrap rounded-full border border-white/60 bg-[#0d2422]/55 pl-6 pr-5 text-xs font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md transition-colors duration-300 group-hover:bg-[#0d2422]/80 sm:h-14 sm:text-[13px]">
         {children}
         <span className="material-symbols-outlined text-[20px] sm:text-[22px]">arrow_forward</span>
       </span>
@@ -199,7 +199,7 @@ export default function LandingPage() {
   }, [pilih]);
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-tekstur-kanvas text-text-primary">
+    <div className="landing-scope min-h-screen overflow-x-clip bg-tekstur-kanvas text-text-primary">
       {/* ============ HEADER (gaya gelap ikonik VITARA) ============ */}
       <header
         className={`fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-[#0d2422]/80 backdrop-blur-md transition-transform duration-300 ${
@@ -263,7 +263,7 @@ export default function LandingPage() {
             <img
               src="/hero-ojol.png"
               alt="Ilustrasi line-art pengendara motor ojek dengan kotak pengantaran dan bubble bertuliskan Pegal?"
-              className="mx-auto h-96 w-auto max-w-full sm:h-[420px] lg:ml-auto lg:mr-0 lg:h-[480px]"
+              className="mx-auto h-auto w-full max-w-[430px] sm:max-w-[480px] lg:ml-auto lg:mr-0 lg:w-full lg:max-w-none"
             />
           </div>
         </div>

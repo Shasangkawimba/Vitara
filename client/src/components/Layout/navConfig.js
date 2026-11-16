@@ -22,7 +22,7 @@ export const NAV_ITEMS = [
     path: "/chat",
     label: "Ergo-Coach",
     labelPanjang: "Ergo-Coach AI",
-    ikon: "favorite",
+    ikon: "smart_toy",
   },
   {
     path: "/finder",

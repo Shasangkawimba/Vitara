@@ -52,7 +52,7 @@
     background-color: #f2f5f4;
     background-image:
       radial-gradient(1150px 540px at 50% -8%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E%3Cg fill='none' stroke='%23183B38' stroke-opacity='0.05' stroke-width='1.35'%3E%3Cpath d='M-30 62 C45 22 95 96 165 58 S 258 38 295 88'/%3E%3Cpath d='M-30 108 C52 68 105 142 175 108 S 268 92 295 132'/%3E%3Cpath d='M-30 154 C58 116 115 192 185 158 S 272 148 295 180'/%3E%3Cpath d='M-30 200 C64 164 125 240 195 204 S 276 200 295 228'/%3E%3Cpath d='M-30 246 C70 212 135 286 205 250 S 280 252 295 276'/%3E%3C/g%3E%3Cg fill='%23183B38' fill-opacity='0.045'%3E%3Ccircle cx='42' cy='46' r='1.7'/%3E%3Ccircle cx='222' cy='152' r='1.7'/%3E%3Ccircle cx='138' cy='230' r='1.4'/%3E%3C/g%3E%3C/svg%3E");
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E%3Cg fill='none' stroke='%23183B38' stroke-opacity='0.13' stroke-width='1.35'%3E%3Cpath d='M-30 62 C45 22 95 96 165 58 S 258 38 295 88'/%3E%3Cpath d='M-30 108 C52 68 105 142 175 108 S 268 92 295 132'/%3E%3Cpath d='M-30 154 C58 116 115 192 185 158 S 272 148 295 180'/%3E%3Cpath d='M-30 200 C64 164 125 240 195 204 S 276 200 295 228'/%3E%3Cpath d='M-30 246 C70 212 135 286 205 250 S 280 252 295 276'/%3E%3C/g%3E%3Cg fill='%23183B38' fill-opacity='0.11'%3E%3Ccircle cx='42' cy='46' r='1.7'/%3E%3Ccircle cx='222' cy='152' r='1.7'/%3E%3Ccircle cx='138' cy='230' r='1.4'/%3E%3C/g%3E%3C/svg%3E");
     background-size: auto, 280px 280px;
     background-repeat: no-repeat, repeat;
   }
@@ -364,17 +364,17 @@
 }
 
 /* Landing page: gradien hijau-putih yang sama, namun fade ke kanvas
-   lebih lama di bagian atas agar teks & ilustrasi putih tetap terbaca. */
+   lebih pendek agar teks & ilustrasi putih tetap terbaca lebih lama. */
 .hero-gradient-landing {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.055' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.05'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23FFFFFF' stroke-opacity='0.075' stroke-width='1.4'%3E%3Cpath d='M-40 80 C50 30 110 115 200 70 S 300 55 345 115'/%3E%3Cpath d='M-40 140 C60 90 120 175 210 135 S 305 125 345 175'/%3E%3Cpath d='M-40 200 C70 150 130 240 220 195 S 310 190 345 235'/%3E%3Cpath d='M-40 260 C80 210 140 300 230 255 S 315 255 345 300'/%3E%3C/g%3E%3Cg fill='%23FFFFFF' fill-opacity='0.07'%3E%3Ccircle cx='54' cy='56' r='1.8'/%3E%3Ccircle cx='262' cy='172' r='1.8'/%3E%3Ccircle cx='160' cy='286' r='1.5'/%3E%3C/g%3E%3C/svg%3E"),
     linear-gradient(
       180deg,
       #0d2422 0%,
-      #163532 38%,
-      #1d4a45 58%,
-      #3f6660 74%,
-      #8fb0aa 88%,
+      #163532 46%,
+      #1d4a45 66%,
+      #3f6660 80%,
+      #8fb0aa 91%,
       #f2f5f4 100%
     );
   background-size: 320px 320px, auto;
@@ -393,6 +393,19 @@
     );
   background-size: 320px 320px, auto;
   background-repeat: repeat, no-repeat;
+}
+
+/* ============ Landing: keterbacaan garis & CTA di light mode ============
+   Hairline #e3eae7 nyaris tak terlihat di atas kanvas sage #f2f5f4;
+   di scope landing & hanya saat html BUKAN .dark, dibuat lebih tegas
+   namun tetap elegan. Saat dark, html punya class .dark sehingga
+   aturan :root:not(.dark) tidak cocok dan #263834 tetap berlaku. */
+:root:not(.dark) .landing-scope .border-border-subtle,
+:root:not(.dark) .landing-scope .border-border-subtle\/70 {
+  border-color: #c2d0c9 !important;
+}
+:root:not(.dark) .landing-scope .divide-border-subtle > :not([hidden]) ~ :not([hidden]) {
+  border-color: #c2d0c9 !important;
 }
 
 /* ============================================================
