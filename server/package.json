@@ -11,7 +11,8 @@
     "test:db": "node src/scripts/testNeonDb.js",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@langchain/core": "^0.3.0",
@@ -23,6 +24,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
     "prisma": "^6.19.3",
+    "web-push": "^4.0.0",
     "zod": "^3.23.8"
   }
 }

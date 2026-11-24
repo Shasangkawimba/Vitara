@@ -44,11 +44,31 @@ router.get('/', async (req, res) => {
       });
     }
 
+    const mulai = Date.now();
     const pharmacies = await fetchNearbyPharmacies(latitude, longitude, searchRadius);
+    let hasil = pharmacies;
+    let radiusTerpakai = searchRadius;
+
+    // OSM di sebagian daerah hanya punya sedikit apotek dalam 3 km. Bila hasil
+    // sedikit dan permintaan pertama cepat, perluas ke 10 km agar daftar tidak
+    // kosong. Ambang waktu menjaga total respons tetap di bawah timeout client.
+    const RADIUS_MAKS = 10000;
+    if (hasil.length < 5 && searchRadius < RADIUS_MAKS && Date.now() - mulai < 2500) {
+      const lebihLuas = await fetchNearbyPharmacies(
+        latitude,
+        longitude,
+        RADIUS_MAKS
+      );
+      if (lebihLuas.length > hasil.length) {
+        hasil = lebihLuas;
+        radiusTerpakai = RADIUS_MAKS;
+      }
+    }
 
     return res.json({
       success: true,
-      data: pharmacies,
+      data: hasil,
+      meta: { radius: radiusTerpakai },
     });
   } catch (error) {
     console.error('Error pada router /api/pharmacy:', error);

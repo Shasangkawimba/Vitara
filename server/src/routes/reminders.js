@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const reminderService = require('../services/reminderService');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Validasi input menggunakan Zod
 let z;
@@ -72,11 +73,11 @@ function validateCreateReminder(body) {
 
 /**
  * GET /api/reminders
- * Mengambil daftar seluruh pengingat milik user
+ * Mengambil daftar seluruh pengingat milik user (wajib login)
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user?.id || req.query.userId || null;
+    const userId = req.user.id;
     const reminders = await reminderService.getAllReminders(userId);
     return res.json({
       success: true,
@@ -93,9 +94,9 @@ router.get('/', async (req, res) => {
 
 /**
  * POST /api/reminders
- * Membuat pengingat baru
+ * Membuat pengingat baru (wajib login)
  */
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { data, error } = validateCreateReminder(req.body);
     if (error) {
@@ -105,7 +106,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const userId = req.user?.id || req.body.userId || null;
+    const userId = req.user.id;
     const newReminder = await reminderService.createReminder(data, userId);
 
     return res.status(201).json({
@@ -123,12 +124,13 @@ router.post('/', async (req, res) => {
 
 /**
  * PATCH /api/reminders/:id/toggle
- * Mengaktifkan atau menonaktifkan pengingat
+ * Mengaktifkan atau menonaktifkan pengingat milik user (wajib login)
  */
-router.patch('/:id/toggle', async (req, res) => {
+router.patch('/:id/toggle', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await reminderService.toggleReminderStatus(id);
+    const userId = req.user.id;
+    const updated = await reminderService.toggleReminderStatus(id, userId);
 
     if (!updated) {
       return res.status(404).json({
@@ -152,12 +154,13 @@ router.patch('/:id/toggle', async (req, res) => {
 
 /**
  * DELETE /api/reminders/:id
- * Menghapus pengingat berdasarkan ID
+ * Menghapus pengingat milik user berdasarkan ID (wajib login)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const isDeleted = await reminderService.deleteReminder(id);
+    const userId = req.user.id;
+    const isDeleted = await reminderService.deleteReminder(id, userId);
 
     if (!isDeleted) {
       return res.status(404).json({

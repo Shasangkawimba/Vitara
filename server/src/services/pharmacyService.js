@@ -1,255 +1,312 @@
 /**
  * Layanan Pencarian Apotek Terdekat (Pharmacy Service)
- * Menggunakan Overpass API (OpenStreetMap) untuk mencari apotek dalam radius tertentu.
  *
- * CATATAN KONEKTIVITAS: beberapa jaringan (ISP/kampus) memblokir atau gagal
- * menjangkau sebagian server Overpass (ConnectTimeoutError). Oleh karena itu
- * pencarian dilakukan BERURUTAN pada daftar endpoint publik — endpoint pertama
- * yang sukses dipakai. Hasil juga di-cache singkat agar tidak membebani mirror.
+ * SUMBER DATA (semua berbasis OpenStreetMap, bukan data rekaan):
+ *   1. Overpass API lewat beberapa mirror publik (paling lengkap).
+ *   2. Nominatim search dengan viewbox beradius (cadangan bila Overpass gagal).
+ *   3. Photon geocoder dengan beberapa kata kunci (cadangan terakhir).
+ *
+ * Catatan penting: kebanyakan mirror Overpass menolak POST atau hanya memuat
+ * data regional (mis. overpass.osm.ch hanya Swiss). Karena itu request memakai
+ * GET + daftar mirror yang sudah diverifikasi, dan ketiga sumber digabung
+ * lalu deduplikasi agar apotek yang lebih dekat tidak terlewat.
  */
 
-// Menghitung jarak antara dua koordinat geografis menggunakan rumus Haversine (hasil dalam meter)
+// Jarak Haversine dalam meter.
 function calculateDistanceInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Radius bumi dalam meter
+  const R = 6371e3;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// Daftar endpoint Overpass publik (dicoba berurutan; pertama yang sukses dipakai)
+// Diurutkan berdasarkan ketersediaan & kecepatan yang terukur dari Indonesia.
+// Mirror .fr paling sering merespons; sisanya cadangan bila IP server diblokir.
 const OVERPASS_ENDPOINTS = [
+  "https://overpass.openstreetmap.fr/api/interpreter",
   "https://overpass-api.de/api/interpreter",
-  "https://overpass.osm.ch/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
 
-// Batas waktu per percobaan endpoint (ms) — jangan terlalu panjang agar
-// fallback cepat berpindah ke mirror berikutnya (dan tidak melebihi timeout axios 15s di client).
-const TIMEOUT_PERCUBAAN_MS = 6000;
+const HEADER_OSM = {
+  "User-Agent": "VITARA/1.0 (pencari fasilitas kesehatan pekerja)",
+  Accept: "application/json",
+};
 
-// Endpoint Photon (geocoder OpenStreetMap global) — fallback terakhir.
-// CATATAN: beberapa jaringan hanya bisa menjangkau mirror Overpass yang datanya
-// terbatas (mis. overpass.osm.ch hanya memuat data Swiss), sehingga query untuk
-// lokasi Indonesia bisa menghasilkan 0 apotek. Photon mengindeks data OSM global
-// dan terbukti dapat dijangkau, sehingga dipakai sebagai sumber data cadangan.
-const PHOTON_URL = "https://photon.komoot.io/api";
-const TIMEOUT_PHOTON_MS = 10000;
+const TIMEOUT_OVERPASS_MS = 7000;
+const TIMEOUT_NOMINATIM_MS = 12000;
+const TIMEOUT_PHOTON_MS = 12000;
 
-// Cache respons sederhana: kunci = "lat,lng,radius" dibulatkan, nilai = { data, waktu }
-const cacheOverpass = new Map();
-const CACHE_TTL_MS = 60_000; // 1 menit
+// Photon mewajibkan q, jadi dipakai satu huruf paling umum di nama apotek.
+// Filter osm_tag tetap menjamin hasilnya hanya amenity=pharmacy.
+const KATA_PHOTON = "a";
 
-/**
- * Mengirim query ke Overpass dengan fallback multi-endpoint.
- * @param {string} query - Query Overpass QL
- * @returns {Promise<Object>} JSON hasil Overpass
- */
+const cache = new Map();
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+/** Ambil JSON Overpass dari mirror pertama yang merespons dengan data valid. */
 async function fetchOverpassDenganFallback(query) {
   let kesalahanTerakhir = null;
+  const mulai = Date.now();
 
   for (const url of OVERPASS_ENDPOINTS) {
+    // Total waktu Overpass dibatasi agar fallback lain tetap sempat merespons
+    // sebelum timeout axios di client (15 detik).
+    const sisa = 11000 - (Date.now() - mulai);
+    if (sisa <= 1000) break;
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `data=${encodeURIComponent(query)}`,
-        // Batas waktu tegas per endpoint agar fallback tidak menggantung
-        signal: AbortSignal.timeout(TIMEOUT_PERCUBAAN_MS),
-      });
+      // GET lebih bisa dijangkau daripada POST di beberapa jaringan/proxy.
+      const response = await fetch(
+        `${url}?data=${encodeURIComponent(query)}`,
+        {
+          headers: HEADER_OSM,
+          signal: AbortSignal.timeout(Math.min(TIMEOUT_OVERPASS_MS, sisa)),
+        }
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      if (!response.ok) {
-        throw new Error(`Gagal menghubungi Overpass API: HTTP ${response.status}`);
-      }
-
-      const teks = await response.text();
-      // Mirror kadang membalas halaman HTML error (bukan JSON) — validasi eksplisit
-      let json;
-      try {
-        json = JSON.parse(teks);
-      } catch {
-        throw new Error("Respons Overpass bukan JSON (kemungkinan error sementara mirror)");
-      }
-      // Dispatcher Overpass kadang mengembalikan JSON berisi "remark" error runtime
-      if (json.remark && !json.elements) {
-        throw new Error(`Overpass remark: ${json.remark}`);
-      }
-      console.log(`[pharmacyService] Sukses via endpoint: ${url}`);
-      return json;
+      const json = await response.json();
+      if (json.remark && !json.elements) throw new Error(json.remark);
+      console.log(`[pharmacyService] Overpass sukses via ${url}`);
+      return json.elements || [];
     } catch (err) {
       kesalahanTerakhir = err;
-      console.warn(`[pharmacyService] Endpoint gagal (${url}): ${err.message}`);
+      console.warn(`[pharmacyService] Overpass gagal (${url}): ${err.message}`);
     }
   }
 
-  throw new Error(
-    `Semua endpoint Overpass gagal dijangkau. Percobaan terakhir: ${kesalahanTerakhir?.message || "tidak diketahui"}`
+  console.warn(
+    `[pharmacyService] Semua Overpass gagal: ${kesalahanTerakhir?.message || "tidak diketahui"}`
   );
+  return [];
 }
 
-/**
- * Fallback: mencari apotek lewat Photon (geocoder OSM global).
- * Photon tidak mendukung query radius eksak seperti Overpass, jadi kita
- * mengambil hasil terdekat (dengan bias lokasi) lalu memfilter jarak di sini.
- * @param {number} lat
- * @param {number} lng
- * @param {number} radius - Radius filter dalam meter
- * @returns {Promise<Array>} List apotek terdekat yang sudah diformat
- */
-async function fetchPharmaciesDariPhoton(lat, lng, radius) {
+/** Format elemen Overpass (node/way) ke struktur yang dipakai frontend. */
+function formatOverpass(elements, lat, lng) {
+  return elements.map((item) => {
+    const itemLat = item.lat || item.center?.lat;
+    const itemLng = item.lon || item.center?.lon;
+    const tags = item.tags || {};
+    const alamat = [
+      tags["addr:street"],
+      tags["addr:housenumber"],
+      tags["addr:city"],
+    ].filter(Boolean).join(" ");
+
+    return {
+      id: `o-${item.id}`,
+      name: tags.name || "Apotek (Tanpa Nama)",
+      lat: itemLat,
+      lng: itemLng,
+      distance:
+        itemLat && itemLng
+          ? calculateDistanceInMeters(lat, lng, itemLat, itemLng)
+          : null,
+      address: alamat || tags["addr:full"] || "Alamat tidak tersedia",
+      opening_hours: tags.opening_hours || "Informasi jam buka tidak tersedia",
+      phone: tags.phone || tags["contact:phone"] || null,
+      wheelchair: tags.wheelchair || null,
+    };
+  });
+}
+
+/** Nominatim: pencarian pharmacy dibatasi kotak di sekitar koordinat. */
+async function fetchDariNominatim(lat, lng, radius) {
+  const deltaLat = radius / 111320;
+  const deltaLng = radius / (111320 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+  const viewbox = `${lng - deltaLng},${lat + deltaLat},${lng + deltaLng},${lat - deltaLat}`;
+
+  // Query terstruktur amenity=pharmacy: menangkap semua apotek, termasuk yang
+  // namanya tidak mengandung kata "apotek" (Kimia Farma, Century, K24, dll).
+  const url =
+    "https://nominatim.openstreetmap.org/search?" +
+    new URLSearchParams({
+      format: "jsonv2",
+      amenity: "pharmacy",
+      viewbox,
+      bounded: "1",
+      limit: "50",
+      addressdetails: "1",
+      extratags: "1",
+    });
+
+  const response = await fetch(url, {
+    headers: HEADER_OSM,
+    signal: AbortSignal.timeout(TIMEOUT_NOMINATIM_MS),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const rows = await response.json();
+
+  return rows
+    .filter((x) => x.category === "amenity" && x.type === "pharmacy")
+    .map((x) => {
+      const itemLat = Number(x.lat);
+      const itemLng = Number(x.lon);
+      const a = x.address || {};
+      const extra = x.extratags || {};
+      const alamat = [a.road, a.housenumber, a.suburb, a.city].filter(Boolean).join(" ");
+      return {
+        id: `n-${x.osm_type}-${x.osm_id}`,
+        name: x.name || "Apotek (Tanpa Nama)",
+        lat: itemLat,
+        lng: itemLng,
+        distance: calculateDistanceInMeters(lat, lng, itemLat, itemLng),
+        address: alamat || x.display_name || "Alamat tidak tersedia",
+        opening_hours:
+          extra.opening_hours || "Informasi jam buka tidak tersedia",
+        phone: extra.phone || a.phone || null,
+        wheelchair: extra.wheelchair || null,
+      };
+    });
+}
+
+/** Photon: cadangan terakhir, tetap difilter amenity=pharmacy. */
+async function fetchDariPhoton(lat, lng) {
   const params = new URLSearchParams({
-    q: "apotek",
+    q: KATA_PHOTON,
+    osm_tag: "amenity:pharmacy",
     lat: String(lat),
     lon: String(lng),
-    osm_tag: "amenity:pharmacy",
     limit: "100",
   });
-
-  const response = await fetch(`${PHOTON_URL}?${params.toString()}`, {
-    headers: { "User-Agent": "VITARA/1.0 (aplikasi kesehatan pekerja)" },
+  const response = await fetch(`https://photon.komoot.io/api?${params}`, {
+    headers: HEADER_OSM,
     signal: AbortSignal.timeout(TIMEOUT_PHOTON_MS),
   });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const json = await response.json();
+  const fitur = json.features || [];
 
-  if (!response.ok) {
-    throw new Error(`Gagal menghubungi Photon: HTTP ${response.status}`);
+  return fitur.map((f) => {
+    const [itemLng, itemLat] = f.geometry?.coordinates || [];
+    const p = f.properties || {};
+    const alamat = [p.street, p.housenumber, p.district, p.city]
+      .filter(Boolean)
+      .join(" ");
+    return {
+      id: `p-${p.osm_type || "n"}-${p.osm_id || Math.random().toString(36).slice(2)}`,
+      name: p.name || "Apotek (Tanpa Nama)",
+      lat: itemLat,
+      lng: itemLng,
+      distance:
+        itemLat && itemLng
+          ? calculateDistanceInMeters(lat, lng, itemLat, itemLng)
+          : null,
+      address: alamat || "Alamat tidak tersedia",
+      opening_hours: "Informasi jam buka tidak tersedia",
+      phone: null,
+      wheelchair: p.wheelchair || null,
+    };
+  });
+}
+
+/** Gabungkan sumber, lengkapi field kosong, buang duplikat, urutkan dari terdekat. */
+function gabungkanHasil(sumberList, radius) {
+  const peta = new Map();
+
+  for (const sumber of sumberList) {
+    for (const apotek of sumber) {
+      if (!apotek.lat || !apotek.lng) continue;
+      if (apotek.distance === null || apotek.distance > radius) continue;
+      // ~11 meter: cukup untuk menyatukan POI yang sama antar-sumber.
+      const kunci = `${apotek.lat.toFixed(4)},${apotek.lng.toFixed(4)}`;
+      const ada = peta.get(kunci);
+      if (!ada) {
+        peta.set(kunci, { ...apotek });
+        continue;
+      }
+
+      // Sumber pertama (Overpass) menang, tapi field yang kosong diisi dari
+      // sumber lain supaya alamat, jam buka, dan telepon tidak hilang.
+      if (!ada.phone && apotek.phone) ada.phone = apotek.phone;
+      if (!ada.wheelchair && apotek.wheelchair) ada.wheelchair = apotek.wheelchair;
+      if (
+        ada.address === "Alamat tidak tersedia" &&
+        apotek.address &&
+        apotek.address !== "Alamat tidak tersedia"
+      ) {
+        ada.address = apotek.address;
+      }
+      if (
+        ada.opening_hours === "Informasi jam buka tidak tersedia" &&
+        apotek.opening_hours &&
+        apotek.opening_hours !== "Informasi jam buka tidak tersedia"
+      ) {
+        ada.opening_hours = apotek.opening_hours;
+      }
+      if (
+        (!ada.name || ada.name === "Apotek (Tanpa Nama)") &&
+        apotek.name &&
+        apotek.name !== "Apotek (Tanpa Nama)"
+      ) {
+        ada.name = apotek.name;
+      }
+    }
   }
 
-  const json = await response.json();
-  const features = json.features || [];
-
-  const pharmacies = features
-    .map((f) => {
-      const [fLng, fLat] = f.geometry?.coordinates || [];
-      const p = f.properties || {};
-      const alamat = [
-        p.street,
-        p.housenumber,
-        p.district,
-        p.city,
-        p.postcode,
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      return {
-        id: `${p.osm_type || "n"}-${p.osm_id || f.properties?.osm_id || Math.random()}`,
-        name: p.name || "Apotek (Tanpa Nama)",
-        lat: fLat,
-        lng: fLng,
-        distance: fLat && fLng ? calculateDistanceInMeters(lat, lng, fLat, fLng) : null,
-        address: alamat || "Alamat tidak tersedia",
-        opening_hours: "Informasi jam buka tidak tersedia",
-        phone: null,
-        wheelchair: p.wheelchair || null,
-      };
-    })
-    .filter((a) => a.lat && a.lng && a.distance !== null && a.distance <= radius)
-    .sort((a, b) => a.distance - b.distance);
-
-  return pharmacies;
+  return [...peta.values()].sort((a, b) => a.distance - b.distance);
 }
 
 /**
- * Mengambil data apotek terdekat dari Overpass API berdasarkan koordinat lintang (lat) dan bujur (lng).
- *
- * @param {number} lat - Lintang pengguna
- * @param {number} lng - Bujur pengguna
- * @param {number} [radius=3000] - Radius pencarian dalam meter (default 3km)
- * @returns {Promise<Array>} List apotek terdekat yang sudah diformat
+ * Ambil seluruh apotek di sekitar koordinat.
+ * @param {number} lat
+ * @param {number} lng
+ * @param {number} [radius=3000] meter
+ * @returns {Promise<Array>} Apotek terurut dari yang terdekat
  */
 async function fetchNearbyPharmacies(lat, lng, radius = 3000) {
-  // Cache singkat: kunci dibulatkan 3 desimal (~110 m) agar hit-nya masuk akal
   const kunciCache = `${lat.toFixed(3)},${lng.toFixed(3)},${radius}`;
-  const entriCache = cacheOverpass.get(kunciCache);
-  if (entriCache && Date.now() - entriCache.waktu < CACHE_TTL_MS) {
-    return entriCache.data;
-  }
+  const entri = cache.get(kunciCache);
+  if (entri && Date.now() - entri.waktu < CACHE_TTL_MS) return entri.data;
 
-  // Query Overpass QL mencari node dan way dengan tag amenity=pharmacy di sekitar koordinat
   const query = `
     [out:json][timeout:25];
     (
       node["amenity"="pharmacy"](around:${radius},${lat},${lng});
       way["amenity"="pharmacy"](around:${radius},${lat},${lng});
+      relation["amenity"="pharmacy"](around:${radius},${lat},${lng});
     );
     out center;
   `;
 
-  let pharmacies;
-  try {
-    const json = await fetchOverpassDenganFallback(query);
-    const elements = json.elements || [];
+  // Ketiga sumber dijalankan paralel supaya total waktu tetap di bawah timeout client.
+  const [overpass, nominatim, photon] = await Promise.all([
+    fetchOverpassDenganFallback(query)
+      .then((elements) => formatOverpass(elements, lat, lng))
+      .catch((err) => {
+        console.warn(`[pharmacyService] Overpass error: ${err.message}`);
+        return [];
+      }),
+    fetchDariNominatim(lat, lng, radius).catch((err) => {
+      console.warn(`[pharmacyService] Nominatim error: ${err.message}`);
+      return [];
+    }),
+    fetchDariPhoton(lat, lng).catch((err) => {
+      console.warn(`[pharmacyService] Photon error: ${err.message}`);
+      return [];
+    }),
+  ]);
 
-    // Format data apotek menjadi struktur yang bersih untuk frontend
-    pharmacies = elements.map((item) => {
-      const itemLat = item.lat || (item.center && item.center.lat);
-      const itemLng = item.lon || (item.center && item.center.lon);
-      const tags = item.tags || {};
-
-      const street = tags["addr:street"] || "";
-      const housenumber = tags["addr:housenumber"] || "";
-      const city = tags["addr:city"] || "";
-      const addressParts = [street, housenumber, city].filter(Boolean);
-
-      const distance =
-        itemLat && itemLng ? calculateDistanceInMeters(lat, lng, itemLat, itemLng) : null;
-
-      return {
-        id: item.id,
-        name: tags.name || "Apotek (Tanpa Nama)",
-        lat: itemLat,
-        lng: itemLng,
-        distance, // Jarak dalam meter
-        address:
-          addressParts.length > 0
-            ? addressParts.join(" ")
-            : tags["addr:full"] || "Alamat tidak tersedia",
-        opening_hours: tags.opening_hours || "Informasi jam buka tidak tersedia",
-        phone: tags.phone || tags["contact:phone"] || null,
-        wheelchair: tags.wheelchair || null,
-      };
-    });
-
-    // Urutkan apotek dari yang terdekat
-    pharmacies.sort((a, b) => {
-      if (a.distance === null) return 1;
-      if (b.distance === null) return -1;
-      return a.distance - b.distance;
-    });
-  } catch (err) {
-    console.warn(`[pharmacyService] Overpass tidak tersedia, mencoba Photon: ${err.message}`);
-    pharmacies = [];
+  // Overpass didahulukan karena datanya paling lengkap & punya jam buka.
+  const hasil = gabungkanHasil([overpass, nominatim, photon], radius);
+  if (hasil.length > 0) {
+    cache.set(kunciCache, { data: hasil, waktu: Date.now() });
   }
-
-  // Fallback ke Photon bila Overpass gagal dijangkau ATAU hasilnya kosong
-  // (beberapa mirror Overpass hanya memuat data wilayah tertentu, mis. Swiss).
-  if (pharmacies.length === 0) {
-    try {
-      const hasilPhoton = await fetchPharmaciesDariPhoton(lat, lng, radius);
-      if (hasilPhoton.length > 0) {
-        console.log(`[pharmacyService] Fallback Photon: ${hasilPhoton.length} apotek ditemukan`);
-        cacheOverpass.set(kunciCache, { data: hasilPhoton, waktu: Date.now() });
-        return hasilPhoton;
-      }
-    } catch (err) {
-      console.warn(`[pharmacyService] Fallback Photon juga gagal: ${err.message}`);
-    }
-  }
-
-  cacheOverpass.set(kunciCache, { data: pharmacies, waktu: Date.now() });
-  return pharmacies;
+  console.log(
+    `[pharmacyService] ${hasil.length} apotek (overpass=${overpass.length}, nominatim=${nominatim.length}, photon=${photon.length})`
+  );
+  return hasil;
 }
 
 module.exports = {
   fetchNearbyPharmacies,
   calculateDistanceInMeters,
+  gabungkanHasil,
 };

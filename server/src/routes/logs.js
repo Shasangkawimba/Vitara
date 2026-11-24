@@ -7,6 +7,7 @@
 const express = require("express");
 const { z } = require("zod");
 const logService = require("../services/logService");
+const { normalisasiGejala } = require("../constants/symptoms");
 const { authenticateToken } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
@@ -29,7 +30,8 @@ const createLogSchema = z.object({
     .optional(),
   symptoms: z
     .array(z.string().trim().min(1, "Keluhan tidak boleh kosong."))
-    .transform((items) => Array.from(new Set(items)))
+    // Simpan label kanonik agar Dashboard tidak bergantung pada keyword matching.
+    .transform(normalisasiGejala)
     .optional()
     .default([]),
 });
@@ -50,7 +52,7 @@ const updateLogSchema = z.object({
     .optional(),
   symptoms: z
     .array(z.string().trim().min(1, "Keluhan tidak boleh kosong."))
-    .transform((items) => Array.from(new Set(items)))
+    .transform(normalisasiGejala)
     .optional(),
 });
 

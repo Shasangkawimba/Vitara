@@ -5,6 +5,7 @@
 // Semua data diambil LANGSUNG dari database (Prisma) — tanpa data dummy.
 // ============================================================
 const prisma = require("../lib/prisma");
+const { areaDariNama, normalisasiGejala } = require("../constants/symptoms");
 
 /**
  * Konversi tanggal ke nama hari Bahasa Indonesia (WIB).
@@ -105,7 +106,7 @@ async function getCorrelationData(userId, days = 7) {
   startDate.setDate(startDate.getDate() - periodeHari);
 
   if (!prisma || !prisma.workLog) {
-    return { hari: [], distribusiKeluhan: [], totalKeluhan: 0 };
+    return { hari: [], distribusiKeluhan: [], rincianKeluhan: [], totalKeluhan: 0 };
   }
 
   const logs = await prisma.workLog.findMany({
@@ -141,9 +142,7 @@ async function getCorrelationData(userId, days = 7) {
     else if (typeof log.symptoms === "string" && log.symptoms.trim()) {
       daftarKeluhan = log.symptoms.split(",").map((s) => s.trim());
     }
-    const keluhanValid = daftarKeluhan.filter(
-      (k) => k && !k.toLowerCase().includes("bebas keluhan")
-    );
+    const keluhanValid = normalisasiGejala(daftarKeluhan);
     entri.keluhan += keluhanValid.length;
     keluhanValid.forEach((k) =>
       penghitungKeluhan.set(k, (penghitungKeluhan.get(k) || 0) + 1)
@@ -169,20 +168,9 @@ async function getCorrelationData(userId, days = 7) {
 
   // Distribusi keluhan per area tubuh (dikelompokkan dari data nyata)
   const totalKeluhan = Array.from(penghitungKeluhan.values()).reduce((a, b) => a + b, 0);
-  const pengelompokan = [
-    { kunci: "Pinggang (Lumbal)", kata: ["pinggang", "punggung", "lumbal", "sakit pinggang"] },
-    { kunci: "Bahu & Leher", kata: ["leher", "bahu", "pundak"] },
-  ];
   const distribusiMap = new Map();
   for (const [nama, jumlah] of penghitungKeluhan) {
-    const namaLower = nama.toLowerCase();
-    let area = "Lainnya";
-    for (const g of pengelompokan) {
-      if (g.kata.some((k) => namaLower.includes(k))) {
-        area = g.kunci;
-        break;
-      }
-    }
+    const area = areaDariNama(nama);
     distribusiMap.set(area, (distribusiMap.get(area) || 0) + jumlah);
   }
   const distribusiKeluhan = Array.from(distribusiMap.entries())
@@ -193,7 +181,12 @@ async function getCorrelationData(userId, days = 7) {
     }))
     .sort((a, b) => b.jumlah - a.jumlah);
 
-  return { hari: daftarHari, distribusiKeluhan, totalKeluhan };
+  // Rincian tiap keluhan (untuk drill-down kartu Wawasan Ergonomi).
+  const rincianKeluhan = Array.from(penghitungKeluhan.entries())
+    .map(([nama, jumlah]) => ({ nama, jumlah, area: areaDariNama(nama) }))
+    .sort((a, b) => b.jumlah - a.jumlah);
+
+  return { hari: daftarHari, distribusiKeluhan, rincianKeluhan, totalKeluhan };
 }
 
 /**
@@ -225,7 +218,7 @@ async function getTrendData(userId, days = 7) {
       : typeof log.symptoms === "string" && log.symptoms.trim()
       ? log.symptoms.split(",").map((s) => s.trim())
       : [];
-    daftar = daftar.filter((k) => k && !k.toLowerCase().includes("bebas keluhan"));
+    daftar = normalisasiGejala(daftar);
     totalKeluhan += daftar.length;
     daftar.forEach((k) => penghitungKeluhan.set(k, (penghitungKeluhan.get(k) || 0) + 1));
   }

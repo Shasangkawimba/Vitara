@@ -12,6 +12,7 @@
 // ============================================================
 require("dotenv").config();
 const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
+const { normalisasiGejala } = require("../constants/symptoms");
 
 // Nama model default. Catatan (Nov 2026): "gemini-2.0-flash" sudah
 // DI-PENSIUNKAN Google (HTTP 404). "gemini-3.8-flash" terdaftar tetapi
@@ -404,7 +405,7 @@ function hitungSkorRisiko(logs = []) {
     const key = kunciHari(log.createdAt);
     const entri = sesuaiHari.get(key) || { tanggal: log.createdAt, jam: 0, keluhan: [] };
     entri.jam += Number(log.workHours) || 0;
-    entri.keluhan.push(...(Array.isArray(log.symptoms) ? log.symptoms : []));
+    entri.keluhan.push(...normalisasiGejala(log.symptoms));
     sesuaiHari.set(key, entri);
   }
   const hariList = [...sesuaiHari.values()]; // Terbaru dulu
@@ -575,7 +576,7 @@ function buatInsightMingguan(logs = []) {
     const key = kunciHari(log.createdAt);
     const entri = sesuaiHari.get(key) || { tanggal: log.createdAt, jam: 0, keluhan: [] };
     entri.jam += Number(log.workHours) || 0;
-    entri.keluhan.push(...(Array.isArray(log.symptoms) ? log.symptoms : []));
+    entri.keluhan.push(...normalisasiGejala(log.symptoms));
     sesuaiHari.set(key, entri);
   }
   const hariAll = [...sesuaiHari.values()];

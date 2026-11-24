@@ -13,20 +13,32 @@ datasource db {
 
 // Model Pengguna (User)
 // Menyimpan kredensial autentikasi dan profil dasar pekerja
-// Catatan: username bersifat @unique dan nullable agar akun lama
-// (yang hanya punya phone) tetap bisa login via nomor telepon;
-// akun baru wajib mengisi username saat registrasi.
+// Catatan: username, phone, email, dan password nullable agar:
+// - akun lama (hanya punya phone) tetap bisa login via nomor telepon,
+// - akun Google tidak punya password/nomor telepon sampai diisi
+//   sendiri lewat halaman Profil.
+// authProvider + providerId menandai asal akun ("local" | "google").
 model User {
-  id         String    @id @default(cuid())
-  username   String?   @unique
-  phone      String    @unique
-  password   String
-  name       String
-  occupation String?
+  id           String    @id @default(cuid())
+  username     String?   @unique
+  phone        String?   @unique
+  email        String?   @unique
+  password     String?
+  name         String
+  occupation   String?
+  photo        String?
+  authProvider String    @default("local")
+  providerId   String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   workLogs       WorkLog[]
   aiInteractions AiInteraction[]
+  reminders      Reminder[]
+  auditLogs      AuditLog[]
+  pushSubscriptions PushSubscription[]
+  passwordResets PasswordResetToken[]
+
+  @@unique([authProvider, providerId])
 }
 
 // Model Pencatatan Kerja & Kesehatan (WorkLog)
@@ -52,5 +64,67 @@ model AiInteraction {
   responsAi   Json     // Format JSON: { analisis, rencana_pemulihan, saran_otc, peringatan, disclaimer }
   isEmergency Boolean  @default(false)
   createdAt   DateTime @default(now())
+}
+
+// Model Pengingat Kesehatan. Sebelumnya tersimpan di memori dan bersama
+// antaruser; sekarang per-user dan ikut terhapus saat akun dihapus.
+model Reminder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  time      String
+  type      String   @default("CUSTOM")
+  days      String[]
+  notes     String?
+  isActive  Boolean   @default(true)
+  lastSentAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// Jejak aksi sensitif (login, daftar, ganti sandi, hapus akun).
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  aksi      String
+  detail    String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Langganan Web Push per perangkat. Dipakai scheduler server untuk
+// mengirim notifikasi walau tab browser tertutup.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Token reset kata sandi sekali pakai. Yang disimpan hanya hash token,
+// bukan token mentah, dan tautannya berlaku 30 menit.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
