@@ -245,7 +245,7 @@ const ChatPage = () => {
       <main className="mx-auto w-full max-w-7xl px-5 pb-14 lg:px-12">
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
           {/* KIRI: kartu percakapan */}
-          <section className="flex h-[calc(100dvh-17rem)] min-h-[440px] flex-col overflow-hidden rounded-4xl border border-border-subtle bg-surface-card shadow-card lg:col-span-7 lg:h-[calc(100dvh-16rem)] lg:min-h-[560px]">
+          <section className="flex h-[calc(100dvh-16rem)] min-h-[700px] flex-col overflow-hidden rounded-4xl border border-border-subtle bg-surface-card shadow-card lg:col-span-7 lg:h-[calc(100dvh-16rem)] lg:min-h-[560px]">
             {/* Identitas asisten */}
             <div className="flex shrink-0 items-center gap-3 border-b border-border-subtle px-5 py-4">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -255,7 +255,7 @@ const ChatPage = () => {
                 <h2 className="truncate text-sm font-bold tracking-tight text-text-primary">
                   Ergo-Coach
                 </h2>
-                <p className="truncate text-[11px] text-text-muted">
+                <p className="truncate text-xs text-text-muted">
                   Pendamping pemulihan • analisis riwayat kerja
                 </p>
               </div>
@@ -281,13 +281,12 @@ const ChatPage = () => {
                   <h3 className="mt-4 max-w-sm text-[17px] font-bold leading-snug tracking-tight text-text-primary">
                     Halo, saya pendamping pemulihan Anda.
                   </h3>
-                  <p className="mt-2 max-w-sm text-xs leading-relaxed text-text-muted">
+                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-text-muted">
                     Ceritakan keluhan fisik setelah bekerja — nyeri pinggang,
                     leher kaku, atau pegal tangan. Saya akan menyusun analisis
                     dan rencana pemulihan singkat.
                   </p>
-                  <p className="mt-3 max-w-sm text-[11px] italic leading-relaxed text-text-muted">
-                    Bukan diagnosis medis. Temui dokter atau faskes terdekat bila
+                  <p className="mt-3 max-w-sm text-xs italic leading-relaxed text-text-muted">                    Bukan diagnosis medis. Temui dokter atau faskes terdekat bila
                     keluhan berlanjut.
                   </p>
                 </div>
@@ -343,7 +342,7 @@ const ChatPage = () => {
                 loading={loading}
               />
 
-              <p className="mt-2 text-center text-[10px] text-text-muted">
+              <p className="mt-2 text-center text-[11px] text-text-muted">
                 Bukan pengganti diagnosis dokter • Data Anda tidak dibagikan
               </p>
             </div>

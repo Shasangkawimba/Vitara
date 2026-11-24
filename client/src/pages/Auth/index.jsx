@@ -49,7 +49,7 @@ export default function AuthPage({ initialMode = "login" }) {
           className="pointer-events-none absolute -bottom-24 -right-16 h-[260px] w-[260px] rounded-full border border-white/10"
         />
 
-        <Link to="/dashboard" className="relative flex w-fit items-center gap-3">
+        <Link to="/" className="relative flex w-fit items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10">
             <span className="material-symbols-outlined text-[20px]">vital_signs</span>
           </span>
@@ -106,14 +106,20 @@ export default function AuthPage({ initialMode = "login" }) {
           aria-hidden="true"
           className="absolute left-1/2 top-6 h-32 w-32 -translate-x-1/2 rounded-full bg-accent-mint/20 blur-2xl"
         />
-        <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/15 shadow-lg shadow-black/25">
-          <span className="material-symbols-outlined text-[26px] drop-shadow">
-            vital_signs
+        <Link
+          to="/"
+          className="relative flex flex-col items-center"
+          aria-label="Kembali ke halaman utama VITARA"
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/15 shadow-lg shadow-black/25">
+            <span className="material-symbols-outlined text-[26px] drop-shadow">
+              vital_signs
+            </span>
           </span>
-        </span>
-        <span className="relative mt-3 font-display text-[22px] font-extrabold tracking-tight text-white drop-shadow-md">
-          VITARA
-        </span>
+          <span className="mt-3 font-display text-[22px] font-extrabold tracking-tight text-white drop-shadow-md">
+            VITARA
+          </span>
+        </Link>
         <p className="relative mt-1 max-w-xs text-xs font-medium leading-relaxed text-white/85 drop-shadow-sm">
           Kebugaran &amp; ritme kerja mitra gig
         </p>

@@ -311,6 +311,7 @@ export const DashboardPage = () => {
   const [chartData, setChartData] = useState(null);
   const [riskScoreData, setRiskScoreData] = useState(null);
   const [weeklyInsightData, setWeeklyInsightData] = useState(null);
+  const [detailErgo, setDetailErgo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [gagalMuat, setGagalMuat] = useState(false);
   const [delta, setDelta] = useState(null);
@@ -398,6 +399,16 @@ export const DashboardPage = () => {
     fetchData(periode);
   }, [periode]);
 
+  // Tutup modal rincian dengan Escape (aksesibilitas keyboard).
+  useEffect(() => {
+    if (!detailErgo) return;
+    const tutup = (e) => {
+      if (e.key === "Escape") setDetailErgo(null);
+    };
+    window.addEventListener("keydown", tutup);
+    return () => window.removeEventListener("keydown", tutup);
+  }, [detailErgo]);
+
   const hariChart = chartData?.hari || [];
   const activeRiskScore = riskScoreData?.skor ?? null;
   const activeRiskLevel = riskScoreData?.level ?? null;
@@ -420,6 +431,7 @@ export const DashboardPage = () => {
   }, [hariChart]);
 
   const distribusi = (chartData?.distribusiKeluhan || []).slice(0, 3);
+  const rincianKeluhan = chartData?.rincianKeluhan || [];
 
   const rentangTanggal = useMemo(() => {
     const fmt = new Intl.DateTimeFormat("id-ID", {
@@ -484,50 +496,56 @@ export const DashboardPage = () => {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Segmented control periode */}
-            <div className="glass-pill inline-flex items-center rounded-full p-1">
-              {[7, 30].map((nilai) => (
-                <button
-                  key={nilai}
-                  type="button"
-                  onClick={() => setPeriode(nilai)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                    periode === nilai
-                      ? "bg-white text-primary shadow-xs"
-                      : "text-white/70 hover:text-white"
-                  }`}
-                >
-                  {nilai} Hari
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={unduhRingkasan}
-              disabled={loading || !bisaUnduh}
-              title={
-                bisaUnduh
-                  ? "Unduh ringkasan CSV periode ini"
-                  : "Catat minimal 1 hari dulu untuk mengunduh ringkasan"
-              }
-              aria-label={
-                bisaUnduh
-                  ? "Unduh ringkasan CSV periode ini"
-                  : "Unduh dinonaktifkan: belum ada catatan pada periode ini"
-              }
-              className="glass-pill inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            {/* CTA tetap: paling menonjol, tetap memakai warna palet primary. */}
+            <Link
+              to="/logger"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-primary-light px-4 py-2.5 text-xs font-semibold text-primary shadow-xs transition-colors hover:bg-primary-light/90 sm:w-auto"
             >
-              <span className="material-symbols-outlined text-[17px]">download</span>
-              <span className="hidden sm:inline">Unduh Ringkasan</span>
-              <span className="sm:hidden">Unduh</span>
-            </button>
-            {!loading && !bisaUnduh && (
-              <span className="w-full text-[11px] font-medium text-white/60">
-                Catat minimal 1 hari dulu untuk mengunduh ringkasan.
-              </span>
-            )}
+              <span className="material-symbols-outlined text-[17px]">edit_note</span>
+              Mulai Catat Hari Ini
+            </Link>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-start">
+              {/* Segmented control periode */}
+              <div className="glass-pill inline-flex items-center rounded-full p-1">
+                {[7, 30].map((nilai) => (
+                  <button
+                    key={nilai}
+                    type="button"
+                    onClick={() => setPeriode(nilai)}
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                      periode === nilai
+                        ? "bg-white text-primary shadow-xs"
+                        : "text-white/70 hover:text-white"
+                    }`}
+                  >
+                    {nilai} Hari
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={unduhRingkasan}
+                disabled={loading || !bisaUnduh}
+                title={
+                  bisaUnduh
+                    ? "Unduh ringkasan CSV periode ini"
+                    : "Catat minimal 1 hari dulu untuk mengunduh ringkasan"
+                }
+                aria-label={
+                  bisaUnduh
+                    ? "Unduh ringkasan CSV periode ini"
+                    : "Unduh dinonaktifkan: belum ada catatan pada periode ini"
+                }
+                className="glass-pill inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <span className="material-symbols-outlined text-[17px]">download</span>
+                <span className="hidden sm:inline">Unduh Ringkasan</span>
+                <span className="sm:hidden">Unduh</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -752,7 +770,13 @@ export const DashboardPage = () => {
                   </p>
                 ) : (
                   distribusi.map((item, idx) => (
-                    <div key={item.area} className="space-y-1.5">
+                    <button
+                      type="button"
+                      key={item.area}
+                      onClick={() => setDetailErgo(item)}
+                      aria-label={`Rincian keluhan ${item.area}`}
+                      className="-mx-1 w-full rounded-xl px-1 py-1 text-left space-y-1.5 transition-colors hover:bg-surface-subtle/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-medium text-text-primary">
                           {item.area}
@@ -785,8 +809,13 @@ export const DashboardPage = () => {
                       <p className="text-[11px] text-text-muted">
                         {item.jumlah} keluhan tercatat
                       </p>
-                    </div>
+                    </button>
                   ))
+                )}
+                {distribusi.length > 0 && (
+                  <p className="text-[11px] text-text-muted">
+                    Ketuk salah satu area untuk melihat rincian keluhan.
+                  </p>
                 )}
               </div>
 
@@ -838,6 +867,76 @@ export const DashboardPage = () => {
           hari tercatat.
         </p>
       </main>
+
+      {/* Modal rincian keluhan per area tubuh */}
+      {detailErgo && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Rincian keluhan ${detailErgo.area}`}
+          onClick={() => setDetailErgo(null)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-surface-card p-5 shadow-card sm:rounded-3xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold tracking-tight text-text-primary">
+                  {detailErgo.area}
+                </h2>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  {detailErgo.jumlah} keluhan ({detailErgo.persen}% dari{" "}
+                  {chartData?.totalKeluhan ?? 0} keluhan periode ini)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailErgo(null)}
+                className="shrink-0 rounded-full p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-primary"
+                aria-label="Tutup rincian"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {rincianKeluhan.filter((r) => r.area === detailErgo.area).length === 0 ? (
+                <p className="rounded-2xl bg-surface-subtle px-4 py-3 text-xs text-text-muted">
+                  Tidak ada rincian keluhan pada area ini.
+                </p>
+              ) : (
+                rincianKeluhan
+                  .filter((r) => r.area === detailErgo.area)
+                  .map((r) => (
+                    <div
+                      key={r.nama}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-surface-subtle/70 px-4 py-3"
+                    >
+                      <span className="min-w-0 truncate text-[13px] font-medium text-text-primary">
+                        {r.nama}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-surface-card px-2.5 py-1 text-[11px] font-bold text-primary">
+                        {r.jumlah}x
+                      </span>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <Link
+                to="/logger"
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-primary-dark"
+              >
+                <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                Catat Hari Ini
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

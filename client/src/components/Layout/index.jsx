@@ -6,17 +6,27 @@
 //   • Konten halaman mengatur kolom & padding-nya sendiri
 //   • Footer desktop + floating bottom dock di mobile
 // ============================================================
-import React from "react";
+import React, { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import BottomNav from "./BottomNav";
 import Footer from "./Footer";
+import { startReminderScheduler } from "../../services/reminderScheduler";
+import { registerServiceWorker } from "../../services/pushService";
 
 const HALAMAN_GELAP = ["/dashboard", "/logger", "/chat", "/finder", "/profile", "/reminder"];
 
 export const Layout = ({ children }) => {
   const { pathname } = useLocation();
   const gelap = HALAMAN_GELAP.some((path) => pathname.startsWith(path));
+
+  // Scheduler pengingat global: alarm tetap berbunyi di halaman mana pun
+  // selama cache profil pengguna masih ada.
+  useEffect(() => {
+    registerServiceWorker();
+    if (!localStorage.getItem("user")) return;
+    return startReminderScheduler();
+  }, []);
 
   return (
     <div className="relative flex min-h-screen flex-col bg-tekstur-kanvas text-text-primary transition-colors duration-200">

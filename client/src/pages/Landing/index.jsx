@@ -12,6 +12,7 @@
 // ============================================================
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { trackEvent } from "../../services/analytics";
 
 /* ---------- Garis ECG kecil (hiasan tunggal) ---------- */
 const PulseLine = ({ className = "" }) => (
@@ -65,7 +66,7 @@ const Reveal = ({ children, delay = 0, className = "", as: Tag = "div" }) => {
    Varian ghost memakai satu pil outline utuh dengan panah di dalamnya,
    agar tidak ada dua bulatan yang saling menindih di atas gradien.
    size="sm" dipakai di header mobile agar muat berdampingan dengan Masuk. */
-const PillButton = ({ to, href, variant = "dark", size = "normal", children }) => {
+const PillButton = ({ to, href, variant = "dark", size = "normal", dataCta, children }) => {
   const isGhost = variant === "ghost";
   const kecil = size === "sm";
   const padat =
@@ -100,8 +101,13 @@ const PillButton = ({ to, href, variant = "dark", size = "normal", children }) =
   }
 
   const kelas = "group inline-flex items-center";
-  if (to) return <Link to={to} className={kelas}>{isi}</Link>;
-  return <a href={href} className={kelas}>{isi}</a>;
+  const atribut = {
+    className: kelas,
+    "data-cta": dataCta,
+    onClick: () => dataCta && trackEvent("cta_click", { cta: dataCta }),
+  };
+  if (to) return <Link to={to} {...atribut}>{isi}</Link>;
+  return <a href={href} {...atribut}>{isi}</a>;
 };
 
 /* ---------- Ilustrasi hero: berkas line-art ojol (public/hero-ojol.png)
@@ -226,7 +232,7 @@ export default function LandingPage() {
             <Link to="/login" className="link-grow whitespace-nowrap text-xs font-semibold text-white/80 transition-colors hover:text-white sm:text-sm sm:font-medium">
               Masuk
             </Link>
-            <PillButton to="/register" variant="light" size="sm">Daftar</PillButton>
+            <PillButton to="/register" variant="light" size="sm" dataCta="header-daftar">Daftar</PillButton>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 h-[2px] w-full bg-transparent" aria-hidden="true">
@@ -255,8 +261,8 @@ export default function LandingPage() {
               VITARA mencatat keluhan, menganalisis postur, dan menemani setiap shift dengan saran ergonomi sederhana, dari kilometer pertama hingga pulang.
             </p>
             <div className="mt-10 flex flex-col gap-5 sm:flex-row sm:items-center">
-              <PillButton to="/register" variant="light">Daftar</PillButton>
-              <PillButton href="#cara-kerja" variant="ghost">Lihat cara kerja</PillButton>
+              <PillButton to="/register" variant="light" dataCta="hero-daftar">Daftar</PillButton>
+              <PillButton href="#cara-kerja" variant="ghost" dataCta="cara-kerja">Lihat cara kerja</PillButton>
             </div>
           </div>
           <div className="order-first lg:order-none lg:col-span-5">
@@ -465,7 +471,7 @@ export default function LandingPage() {
             </h2>
           </Reveal>
           <Reveal delay={140} className="flex flex-col items-start gap-4">
-            <PillButton to="/register">Mulai sekarang</PillButton>
+            <PillButton to="/register" dataCta="footer-mulai">Mulai sekarang</PillButton>
             <p className="font-editorial text-sm text-text-muted">Gratis · 1 menit · Tanpa kartu kredit</p>
           </Reveal>
         </div>

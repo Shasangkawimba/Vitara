@@ -5,11 +5,10 @@
 // Stitch: hero pine memudar ke kanvas, kartu rounded-4xl, zona
 // berbahaya berlatar merah muda. Seluruh label berbahasa
 // Indonesia.
-// Catatan: endpoint PUT/DELETE /api/auth/me belum tersedia di
-// backend (milik P1). Saat panggilan gagal, penyimpanan profil
-// dilindungi ke localStorage agar demo tetap berjalan; kata
-// sandi & penghapusan akun menampilkan pesan jujur tanpa
-// menyimpan sandi secara lokal.
+// Catatan: PUT /api/auth/me sudah tersedia di backend. Nomor telepon
+// dan email boleh kosong (mis. akun Google) dan diisi di sini kapan
+// saja. Kata sandi & penghapusan akun punya endpoint sendiri
+// (PUT /api/auth/me/password, DELETE /api/auth/me).
 // ============================================================
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -63,7 +62,7 @@ export const ProfilePage = () => {
   });
 
   // Formulir informasi pribadi.
-  const [form, setForm] = useState({ name: "", occupation: "", phone: "" });
+  const [form, setForm] = useState({ name: "", occupation: "", phone: "", email: "" });
   // Formulir kata sandi.
   const [sandi, setSandi] = useState({ lama: "", baru: "", konfirmasi: "" });
   const [lihatSandi, setLihatSandi] = useState(false);
@@ -85,6 +84,7 @@ export const ProfilePage = () => {
         name: user.name || "",
         occupation: user.occupation || "",
         phone: user.phone || "",
+        email: user.email || "",
       });
     }
   }, [user]);
@@ -93,7 +93,7 @@ export const ProfilePage = () => {
   useEffect(() => {
     let batal = false;
     api
-      .get("/auth/me")
+      .get("/api/auth/me")
       .then((res) => {
         if (batal) return;
         const terbaru = res.data?.data?.user;
@@ -103,6 +103,7 @@ export const ProfilePage = () => {
             name: terbaru.name || "",
             occupation: terbaru.occupation || "",
             phone: terbaru.phone || "",
+            email: terbaru.email || "",
           });
         }
       })
@@ -114,8 +115,18 @@ export const ProfilePage = () => {
     };
   }, []);
 
+  // Tutup modal hapus akun dengan Escape (aksesibilitas keyboard).
+  useEffect(() => {
+    if (!modalHapus) return;
+    const tutup = (e) => {
+      if (e.key === "Escape") setModalHapus(false);
+    };
+    window.addEventListener("keydown", tutup);
+    return () => window.removeEventListener("keydown", tutup);
+  }, [modalHapus]);
+
   const inisial = useMemo(() => inisialDariNama(user?.name), [user?.name]);
-  const telepon = user?.phone ? normalisasiTelepon(user.phone) : "-";
+  const telepon = user?.phone ? normalisasiTelepon(user.phone) : "Belum diisi";
 
   const gabungkanUser = (bagian) => {
     setUser((sebelumnya) => {
@@ -140,14 +151,25 @@ export const ProfilePage = () => {
   };
 
   // Foto profil: dipilih, dikecilkan ke maks 256px JPEG, lalu disimpan
-  // lokal di data user (backend belum punya endpoint foto).
+  // ke server agar tetap ada saat login dari perangkat lain.
   const berkasFoto = useRef(null);
   const foto = user?.photo || null;
 
-  const simpanFoto = (dataUrl) => {
-    gabungkanUser({ photo: dataUrl });
-    setPesan({ tipe: "sukses", teks: "Foto profil berhasil diperbarui." });
-    window.dispatchEvent(new Event("vitara-user-changed"));
+  const simpanFoto = async (dataUrl) => {
+    try {
+      const respons = await api.put("/api/auth/me/photo", { photo: dataUrl });
+      const terbaru = respons.data?.data?.user;
+      gabungkanUser({ photo: terbaru?.photo ?? dataUrl });
+      setPesan({ tipe: "sukses", teks: "Foto profil tersimpan di akun Anda." });
+      window.dispatchEvent(new Event("vitara-user-changed"));
+    } catch (err) {
+      setPesan({
+        tipe: "error",
+        teks:
+          err.response?.data?.error ||
+          "Gagal menyimpan foto profil ke server. Coba lagi.",
+      });
+    }
   };
 
   const handlePilihBerkas = (e) => {
@@ -183,13 +205,23 @@ export const ProfilePage = () => {
     pembaca.readAsDataURL(berkas);
   };
 
-  const hapusFoto = () => {
-    gabungkanUser({ photo: null });
-    setPesan({
-      tipe: "peringatan",
-      teks: "Foto profil dihapus — avatar kembali menampilkan inisial.",
-    });
-    window.dispatchEvent(new Event("vitara-user-changed"));
+  const hapusFoto = async () => {
+    try {
+      await api.put("/api/auth/me/photo", { photo: null });
+      gabungkanUser({ photo: null });
+      setPesan({
+        tipe: "peringatan",
+        teks: "Foto profil dihapus. Avatar kembali menampilkan inisial.",
+      });
+      window.dispatchEvent(new Event("vitara-user-changed"));
+    } catch (err) {
+      setPesan({
+        tipe: "error",
+        teks:
+          err.response?.data?.error ||
+          "Gagal menghapus foto profil di server. Coba lagi.",
+      });
+    }
   };
 
   const simpanProfil = async (e) => {
@@ -197,6 +229,7 @@ export const ProfilePage = () => {
     const nama = form.name.trim();
     const profesi = form.occupation.trim();
     const teleponBaru = normalisasiTelepon(form.phone);
+    const emailBaru = form.email.trim().toLowerCase();
 
     if (nama.length < 2) {
       setPesan({ tipe: "error", teks: "Nama lengkap wajib diisi (minimal 2 karakter)." });
@@ -206,25 +239,35 @@ export const ProfilePage = () => {
       setPesan({ tipe: "error", teks: "Profesi maksimal 50 karakter." });
       return;
     }
-    if (!/^08\d{7,13}$/.test(teleponBaru)) {
+    if (teleponBaru && !/^08\d{7,13}$/.test(teleponBaru)) {
       setPesan({ tipe: "error", teks: "Nomor telepon tidak valid. Gunakan format 08xxxxxxxxxx." });
       return;
     }
+    if (emailBaru && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailBaru)) {
+      setPesan({ tipe: "error", teks: "Format email tidak valid." });
+      return;
+    }
 
-    const payload = { name: nama, occupation: profesi, phone: teleponBaru };
+    const payload = {
+      name: nama,
+      occupation: profesi,
+      phone: teleponBaru,
+      email: emailBaru,
+    };
     try {
       setMenyimpan(true);
-      const respons = await api.put("/auth/me", payload);
+      const respons = await api.put("/api/auth/me", payload);
       const terbaru = respons.data?.data?.user || payload;
       gabungkanUser(terbaru);
       setPesan({ tipe: "sukses", teks: "Informasi pribadi berhasil diperbarui." });
     } catch (err) {
-      // Endpoint belum tersedia di backend — lindungi perubahan di perangkat.
+      // Jaringan bermasalah: jangan buang isian user, simpan di perangkat.
       gabungkanUser(payload);
       setPesan({
         tipe: "peringatan",
         teks:
-          "Backend belum menyediakan PUT /api/auth/me — perubahan tersimpan di perangkat ini dan akan tersinkron saat endpoint aktif.",
+          err.response?.data?.error ||
+          "Perubahan tersimpan di perangkat ini, tetapi gagal dikirim ke server. Coba simpan lagi.",
       });
     } finally {
       setMenyimpan(false);
@@ -237,26 +280,28 @@ export const ProfilePage = () => {
       setPesan({ tipe: "error", teks: "Kata sandi baru minimal 6 karakter." });
       return;
     }
+    if (!/[a-zA-Z]/.test(sandi.baru) || !/[0-9]/.test(sandi.baru)) {
+      setPesan({ tipe: "error", teks: "Kata sandi baru harus berisi huruf dan angka." });
+      return;
+    }
     if (sandi.baru !== sandi.konfirmasi) {
       setPesan({ tipe: "error", teks: "Konfirmasi kata sandi baru tidak cocok." });
       return;
     }
     try {
       setMenggantiSandi(true);
-      await api.put("/auth/me/password", {
+      await api.put("/api/auth/me/password", {
         currentPassword: sandi.lama,
         password: sandi.baru,
       });
       setSandi({ lama: "", baru: "", konfirmasi: "" });
       setPesan({ tipe: "sukses", teks: "Kata sandi berhasil diperbarui." });
     } catch (err) {
-      const belumTersedia = !err.response || err.response.status === 404;
       setPesan({
         tipe: "error",
-        teks: belumTersedia
-          ? "Endpoint pengubahan kata sandi belum tersedia di backend (PUT /api/auth/me/password)."
-          : "Gagal mengganti kata sandi: " +
-            (err.response?.data?.error || "Periksa kembali kata sandi lama Anda."),
+        teks:
+          err.response?.data?.error ||
+          "Gagal mengganti kata sandi. Periksa koneksi lalu coba lagi.",
       });
     } finally {
       setMenggantiSandi(false);
@@ -268,14 +313,14 @@ export const ProfilePage = () => {
     setGalatHapus("");
     try {
       setMenghapus(true);
-      await api.delete("/auth/me");
-      localStorage.removeItem("token");
+      await api.delete("/api/auth/me");
       localStorage.removeItem("user");
       navigate("/login", { replace: true });
     } catch (err) {
       setMenghapus(false);
       setGalatHapus(
-        "Gagal menghapus akun — endpoint DELETE /api/auth/me belum tersedia di backend. Hubungi tim backend (P1)."
+        err.response?.data?.error ||
+          "Gagal menghapus akun. Periksa koneksi lalu coba lagi."
       );
     }
   };
@@ -516,10 +561,10 @@ export const ProfilePage = () => {
                 </div>
               </div>
 
-              {/* Nomor telepon */}
+              {/* Nomor telepon (opsional) */}
               <div>
                 <label htmlFor="profil-telepon" className="mb-1.5 block text-[13px] font-medium text-text-muted">
-                  Nomor telepon
+                  Nomor telepon (opsional)
                 </label>
                 <div className="relative rounded-2xl border border-border-subtle bg-surface-subtle transition-colors focus-within:border-accent-mint focus-within:bg-surface-card">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-text-muted">
@@ -532,12 +577,36 @@ export const ProfilePage = () => {
                     value={form.phone}
                     onChange={handleChangeForm}
                     placeholder="08123456789"
-                    required
                     className="w-full bg-transparent py-3 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
                   />
                 </div>
                 <p className="mt-1.5 text-[11px] text-text-muted">
-                  Nomor ini dipakai untuk masuk.
+                  Bisa diisi kapan saja, termasuk untuk akun Google.
+                </p>
+              </div>
+
+              {/* Email (opsional) */}
+              <div className="sm:col-span-2">
+                <label htmlFor="profil-email" className="mb-1.5 block text-[13px] font-medium text-text-muted">
+                  Email (opsional)
+                </label>
+                <div className="relative rounded-2xl border border-border-subtle bg-surface-subtle transition-colors focus-within:border-accent-mint focus-within:bg-surface-card">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-text-muted">
+                    <span className="material-symbols-outlined text-[20px]">mail</span>
+                  </div>
+                  <input
+                    id="profil-email"
+                    name="email"
+                    type="email"
+                    value={form.email}
+                    onChange={handleChangeForm}
+                    placeholder="nama@email.com"
+                    autoComplete="email"
+                    className="w-full bg-transparent py-3 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-text-muted">
+                  Email yang sama dengan akun Google akan menautkan akun ini.
                 </p>
               </div>
             </div>
@@ -611,6 +680,12 @@ export const ProfilePage = () => {
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-3 py-3">
+                  <dt className="text-text-muted">Email</dt>
+                  <dd className="min-w-0 truncate font-medium text-text-primary">
+                    {user.email || "Belum diisi"}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3 py-3">
                   <dt className="text-text-muted">Nomor telepon</dt>
                   <dd className="font-medium text-text-primary">{telepon}</dd>
                 </div>
@@ -657,15 +732,23 @@ export const ProfilePage = () => {
 
               <div className="space-y-3.5">
                 <div>
-                  <label htmlFor="sandi-lama" className="mb-1.5 block text-[12px] font-medium text-text-muted">Kata sandi saat ini</label>
+                  <label htmlFor="sandi-lama" className="mb-1.5 block text-[12px] font-medium text-text-muted">
+                    {user?.hasPassword === false
+                      ? "Kata sandi saat ini (belum ada, boleh kosong)"
+                      : "Kata sandi saat ini"}
+                  </label>
                   <input
                     id="sandi-lama"
                     name="lama"
                     type={lihatSandi ? "text" : "password"}
                     value={sandi.lama}
                     onChange={handleChangeSandi}
-                    placeholder="Masukkan kata sandi saat ini"
-                    required
+                    placeholder={
+                      user?.hasPassword === false
+                        ? "Akun Google belum punya kata sandi"
+                        : "Masukkan kata sandi saat ini"
+                    }
+                    required={user?.hasPassword !== false}
                     className="w-full rounded-2xl border border-border-subtle bg-surface-subtle px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/70 transition-colors focus:border-accent-mint focus:bg-surface-card focus:outline-none"
                   />
                 </div>
@@ -677,7 +760,7 @@ export const ProfilePage = () => {
                     type={lihatSandi ? "text" : "password"}
                     value={sandi.baru}
                     onChange={handleChangeSandi}
-                    placeholder="Minimal 6 karakter"
+                    placeholder="Minimal 6 karakter, huruf dan angka"
                     required
                     minLength={6}
                     className="w-full rounded-2xl border border-border-subtle bg-surface-subtle px-4 py-3 text-sm text-text-primary placeholder:text-text-muted/70 transition-colors focus:border-accent-mint focus:bg-surface-card focus:outline-none"
@@ -718,11 +801,15 @@ export const ProfilePage = () => {
 
       {/* Modal konfirmasi hapus akun */}
       {modalHapus && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-6"
+          onClick={() => setModalHapus(false)}
+        >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="judul-hapus"
+            onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md rounded-t-3xl bg-surface-card p-6 shadow-card sm:rounded-3xl"
           >
             <div className="flex items-start justify-between gap-3">

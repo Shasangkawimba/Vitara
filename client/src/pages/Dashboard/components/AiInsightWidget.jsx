@@ -6,8 +6,9 @@
 //   • ErgoInsightCard → ringkasan ergo-insight selebar konten.
 // Sumber: GET /api/ai/risk-score & GET /api/ai/weekly-insight.
 // ============================================================
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import Skeleton from "../../../components/Skeleton";
 
 /** Terjemahkan skor risiko menjadi label, warna, dan saran singkat. */
 const hitungLevelRisiko = (skor, levelApi, saran) => {
@@ -65,6 +66,8 @@ export const EvaluationCard = ({
     riskScoreData?.level ?? null,
     riskScoreData?.saran ?? null
   );
+  const [lihatRincian, setLihatRincian] = useState(false);
+  const komponen = riskScoreData?.komponen || [];
 
   return (
     <section className="flex h-full flex-col rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-6">
@@ -87,7 +90,7 @@ export const EvaluationCard = ({
       <div className="mt-5">
         <div className="flex items-baseline gap-1.5">
           {loading ? (
-            <div className="h-9 w-20 animate-pulse rounded-lg bg-surface-subtle" />
+            <Skeleton className="h-9 w-20" />
           ) : (
             <>
               <span className="text-[38px] font-bold leading-none tracking-tight text-text-primary">
@@ -137,6 +140,45 @@ export const EvaluationCard = ({
         <p className="mt-3.5 text-[13px] leading-relaxed text-text-muted">
           {level.pesan}
         </p>
+
+        {skor !== null && komponen.length > 0 && (
+          <div className="mt-4 rounded-2xl border border-border-subtle bg-surface-subtle/60">
+            <button
+              type="button"
+              onClick={() => setLihatRincian((v) => !v)}
+              aria-expanded={lihatRincian}
+              className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-[12px] font-semibold text-text-primary"
+            >
+              Rincian skor risiko
+              <span className="material-symbols-outlined text-[18px] text-text-muted">
+                {lihatRincian ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+            {lihatRincian && (
+              <ul className="space-y-3 border-t border-border-subtle p-3.5">
+                {komponen.map((k) => (
+                  <li key={k.nama}>
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="font-semibold text-text-primary">{k.nama}</span>
+                      <span className="shrink-0 text-text-muted">
+                        {k.poin}/{k.maks}
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-variant">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${Math.min(100, (k.poin / k.maks) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] leading-relaxed text-text-muted">
+                      {k.detail}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle pt-4">
@@ -221,9 +263,9 @@ export const ErgoInsightCard = ({ weeklyInsightData, loading }) => {
         <div className="mt-5 grid gap-4 lg:grid-cols-2 lg:gap-8">
           {[0, 1].map((kolom) => (
             <div key={kolom} className="space-y-2.5">
-              <div className="h-3.5 w-full animate-pulse rounded-md bg-surface-subtle" />
-              <div className="h-3.5 w-11/12 animate-pulse rounded-md bg-surface-subtle" />
-              <div className="h-3.5 w-2/3 animate-pulse rounded-md bg-surface-subtle" />
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-11/12" />
+              <Skeleton className="h-3.5 w-2/3" />
             </div>
           ))}
         </div>

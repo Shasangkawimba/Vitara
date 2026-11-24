@@ -3,6 +3,7 @@
 // Layanan Web Notification & Scheduler Otomatis VITARA (Milik P4)
 // Mendukung Web Notification API, Web Audio API Chime, dan Geolocation/Vibration
 // ============================================================
+import api from './api';
 
 const DAYS_NAME = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
@@ -99,7 +100,6 @@ export function sendWebNotification(title, options = {}) {
 
 // Riwayat pengecekan menit terakhir agar tidak terjadi notifikasi ganda pada menit yang sama
 let lastCheckedMinute = '';
-
 /**
  * Mengecek apakah ada pengingat aktif yang cocok dengan waktu & hari saat ini.
  * Dipanggil secara berkala (misal setiap 15-30 detik oleh timer).
@@ -154,4 +154,51 @@ export function checkDueReminders(reminders, onTriggered) {
       }
     }
   });
+}
+
+// Scheduler global: berjalan di semua halaman internal (dipasang di Layout)
+// agar alarm tetap berbunyi walau halaman Pengingat tidak dibuka.
+// Saat tab ditutup, pengiriman diambil alih oleh Web Push dari server.
+let schedulerAktif = false;
+
+export function startReminderScheduler() {
+  if (schedulerAktif) return () => {};
+  schedulerAktif = true;
+
+  let daftar = [];
+  let berhenti = false;
+
+  const muatDaftar = async () => {
+    if (berhenti) return;
+    try {
+      const res = await api.get('/api/reminders');
+      if (res.data?.success) daftar = res.data.data || [];
+    } catch {
+      // Diamkan: halaman Pengingat tetap menampilkan pesan errornya sendiri.
+    }
+  };
+
+  const periksa = () => {
+    if (daftar.length > 0) {
+      checkDueReminders(daftar, (reminder) => {
+        window.dispatchEvent(
+          new CustomEvent('vitara:reminder', { detail: reminder })
+        );
+      });
+    }
+  };
+
+  muatDaftar();
+  const timerPeriksa = setInterval(periksa, 15000);
+  const timerMuat = setInterval(muatDaftar, 5 * 60 * 1000);
+  const saatFokus = () => muatDaftar();
+  window.addEventListener('focus', saatFokus);
+
+  return () => {
+    berhenti = true;
+    schedulerAktif = false;
+    clearInterval(timerPeriksa);
+    clearInterval(timerMuat);
+    window.removeEventListener('focus', saatFokus);
+  };
 }

@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import GoogleButton from "./GoogleButton";
 
 const OCCUPATION_OPTIONS = [
   "Driver Ojol (Motor)",
@@ -62,12 +63,21 @@ export default function Register({ onSwitchToLogin }) {
       );
       return;
     }
-    if (!formData.phone.trim()) {
-      setErrorMessage("Nomor telepon wajib diisi.");
+    // Nomor telepon opsional: boleh diisi nanti lewat halaman Profil.
+    const teleponBersih = formData.phone.trim();
+    if (
+      teleponBersih &&
+      !/^(\+62|62|0)8[0-9]{7,12}$/.test(teleponBersih.replace(/[\s\-()]/g, ""))
+    ) {
+      setErrorMessage("Nomor telepon tidak valid. Gunakan format 08xxxxxxxxxx.");
       return;
     }
     if (formData.password.length < 6) {
       setErrorMessage("Kata sandi minimal harus 6 karakter.");
+      return;
+    }
+    if (!/[a-zA-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
+      setErrorMessage("Kata sandi harus berisi huruf dan angka.");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -80,16 +90,16 @@ export default function Register({ onSwitchToLogin }) {
       const response = await api.post("/api/auth/register", {
         name: formData.name.trim(),
         username: formData.username.trim().toLowerCase(),
-        phone: formData.phone.trim(),
+        phone: formData.phone.trim() || undefined,
         occupation: formData.occupation,
         password: formData.password,
       });
 
       if (response.data?.success) {
-        const { token, user } = response.data.data;
-        // Simpan token JWT & profil
-        localStorage.setItem("token", token);
+        const { user } = response.data.data;
+        // JWT kini berupa cookie httpOnly. Cache profil hanya untuk UI.
         localStorage.setItem("user", JSON.stringify(user));
+        window.dispatchEvent(new Event("vitara-user-changed"));
 
         // Navigasi ke halaman Logger
         navigate("/logger");
@@ -196,7 +206,7 @@ export default function Register({ onSwitchToLogin }) {
             htmlFor="register-phone"
             className="mb-1.5 block text-[13px] font-medium text-text-muted"
           >
-            No. telepon (WA)
+            No. telepon (WA, opsional)
           </label>
           <div className="relative rounded-2xl border border-border-subtle bg-surface-subtle transition-colors focus-within:border-accent-mint focus-within:bg-surface-card">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-text-muted">
@@ -209,7 +219,6 @@ export default function Register({ onSwitchToLogin }) {
               value={formData.phone}
               onChange={handleChange}
               placeholder="Contoh: 08123456789"
-              required
               className="w-full bg-transparent py-3 sm:py-2.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
             />
           </div>
@@ -268,7 +277,7 @@ export default function Register({ onSwitchToLogin }) {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Minimal 6 karakter"
+              placeholder="Minimal 6 karakter, huruf dan angka"
               required
               className="w-full bg-transparent py-3 sm:py-2.5 pl-11 pr-11 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
             />
@@ -334,6 +343,15 @@ export default function Register({ onSwitchToLogin }) {
           )}
         </button>
       </form>
+
+      {/* CTA Google di bawah form */}
+      <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-text-muted">
+        <span className="h-px flex-1 bg-border-subtle" />
+        atau
+        <span className="h-px flex-1 bg-border-subtle" />
+      </div>
+
+      <GoogleButton label="Daftar dengan Google" />
 
       {/* Switcher */}
       <div className="mt-6 border-t border-border-subtle pt-5 text-center">

@@ -89,9 +89,32 @@ const CustomTooltip = ({ active, payload, label, palet }) => {
   return null;
 };
 
+// "2026-11-23" -> "23/11" agar sumbu X 30 hari tidak berulang "Sen, Sel, ...".
+const labelTanggal = (tanggal) => {
+  const [tahun, bulan, hari] = String(tanggal).split("-");
+  return tahun && bulan && hari ? `${Number(hari)}/${Number(bulan)}` : tanggal;
+};
+
 export const CorrelationChart = ({ data, loading }) => {
   const isDark = useDarkMode();
   const palet = gunakanPalet(isDark);
+
+  // Lebih dari 14 titik: label diganti tanggal & tick dijarangkan supaya terbaca.
+  const panjang = data?.length ?? 0;
+  const rapat = panjang > 14;
+  const grafik = (data || []).map((titik, index) => {
+    let label = titik.hari;
+    if (rapat && titik.tanggal) label = labelTanggal(titik.tanggal);
+    // Layar sempit: label bersebelahan saling menindih, kosongkan selang-seling.
+    if (panjang > 5 && index % 2 !== 0) label = "";
+    return { ...titik, label };
+  });
+  const jarakTick = rapat ? Math.ceil(panjang / 7) - 1 : 0;
+
+  // Skala kiri dihitung sendiri agar bisa ditampilkan di luar area scroll (sticky).
+  const maksJam = Math.max(8, ...(data || []).map((d) => Number(d.jamKerja) || 0));
+  const atasJam = Math.max(8, Math.ceil(maksJam / 4) * 4);
+  const tickJam = [0, 1, 2, 3, 4].map((i) => Math.round((atasJam / 4) * i));
 
   if (loading) {
     return (
@@ -108,33 +131,55 @@ export const CorrelationChart = ({ data, loading }) => {
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-72 w-full items-center justify-center text-xs text-text-muted">
+      <div className="flex h-[300px] w-full items-center justify-center text-xs text-text-muted">
         Belum ada data aktivitas log untuk divisualisasikan.
       </div>
     );
   }
 
+  // Sumbu Y kiri dibuat sebagai kolom tetap di luar area scroll agar
+  // angkanya tidak ikut bergeser saat chart digeser horizontal.
   return (
-    <div className="h-72 w-full pt-4 lg:h-80">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-          data={data}
-          margin={{ top: 12, right: 8, left: -22, bottom: 0 }}
-        >
-          <CartesianGrid strokeDasharray="4 6" vertical={false} stroke={palet.grid} />
-          <XAxis
-            dataKey="hari"
-            tick={{ fontSize: 11, fill: palet.tick, fontFamily: "Inter" }}
-            axisLine={{ stroke: palet.axisLine }}
-            tickLine={false}
-          />
-          <YAxis
-            yAxisId="left"
-            tick={{ fontSize: 11, fill: palet.tick, fontFamily: "Inter" }}
-            axisLine={false}
-            tickLine={false}
-            unit="j"
-          />
+    /* Mobile: chart lebih lebar dari layar dan bisa digeser horizontal. */
+    <div className="flex pt-4">
+      <div className="relative h-[240px] w-9 shrink-0 lg:h-80" aria-hidden="true">
+        {tickJam.map((nilai) => (
+          <span
+            key={nilai}
+            className="absolute right-1 -translate-y-1/2 text-[11px] leading-none"
+            style={{
+              top: `calc(12px + (100% - 40px) * ${1 - nilai / atasJam})`,
+              color: palet.tick,
+              fontFamily: "Inter",
+            }}
+          >
+            {nilai}j
+          </span>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1 overflow-x-auto pb-2">
+        <div className="h-[240px] min-w-[560px] lg:min-w-0 lg:h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={grafik}
+              margin={{ top: 12, right: 8, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="4 6" vertical={false} stroke={palet.grid} />
+              <XAxis
+                dataKey="label"
+                height={28}
+                interval={jarakTick}
+                tickMargin={6}
+                tick={{ fontSize: 11, fill: palet.tick, fontFamily: "Inter" }}
+                axisLine={{ stroke: palet.axisLine }}
+                tickLine={false}
+              />
+              <YAxis
+                yAxisId="left"
+                hide
+                domain={[0, atasJam]}
+                ticks={tickJam}
+              />
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -167,10 +212,10 @@ export const CorrelationChart = ({ data, loading }) => {
             dataKey="jamKerja"
             name="Jam Kerja"
             fill={palet.bar}
-            radius={[10, 10, 0, 0]}
+            radius={rapat ? [4, 4, 0, 0] : [10, 10, 0, 0]}
             maxBarSize={34}
           >
-            {(data || []).map((entry, index) => (
+            {(grafik || []).map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={entry.jamKerja > 8 ? palet.barOvertime : palet.bar}
@@ -185,11 +230,17 @@ export const CorrelationChart = ({ data, loading }) => {
             name="Keluhan Fisik"
             stroke={palet.line}
             strokeWidth={2.5}
-            dot={{ r: 3.5, fill: palet.line, strokeWidth: 2, stroke: palet.dotStroke }}
+            dot={
+              rapat
+                ? false
+                : { r: 2.5, fill: palet.line, stroke: "none" }
+            }
             activeDot={{ r: 5 }}
           />
         </ComposedChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 };

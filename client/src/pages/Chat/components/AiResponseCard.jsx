@@ -34,7 +34,7 @@ const renderPeringatan = (teks) => {
  */
 const JudulSeksi = ({ ikon, children }) => (
   <div className="mb-2 flex items-center gap-2">
-    <span className="material-symbols-outlined text-[18px] text-primary">{ikon}</span>
+    <span className="material-symbols-outlined text-[16px] text-primary">{ikon}</span>
     <h3 className="text-xs font-bold uppercase tracking-wider text-text-main">
       {children}
     </h3>
@@ -72,12 +72,12 @@ const AiResponseCard = ({ data, waktu }) => {
             isEmergency ? "bg-red-600" : "bg-primary"
           }`}
         >
-          <span className="material-symbols-outlined text-white text-[18px]">
+          <span className="material-symbols-outlined text-white text-[16px]">
             {isEmergency ? "warning" : "smart_toy"}
           </span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-text-main truncate">
+          <p className="text-[15px] font-bold text-text-main truncate">
             Ergo-Coach
           </p>
           <p className="text-[11px] text-text-soft truncate">
@@ -90,12 +90,12 @@ const AiResponseCard = ({ data, waktu }) => {
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-5">
+      <div className="px-4 py-3 space-y-4">
         {/* 1. Analisis Singkat */}
         {analisis && (
           <section>
             <JudulSeksi ikon="stethoscope">Analisis Singkat</JudulSeksi>
-            <p className="text-sm leading-relaxed text-text-muted">{analisis}</p>
+            <p className="text-[15px] leading-relaxed text-text-muted">{analisis}</p>
           </section>
         )}
 
@@ -108,7 +108,7 @@ const AiResponseCard = ({ data, waktu }) => {
             <ul className="space-y-2.5">
               {rencana.map((langkah, index) => (
                 <li key={index} className="flex gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-primary text-[16px] shrink-0 mt-0.5">
                     check_circle
                   </span>
                   <div className="min-w-0">
@@ -138,7 +138,7 @@ const AiResponseCard = ({ data, waktu }) => {
             <ul className="space-y-2.5">
               {saranOtc.map((obat, index) => (
                 <li key={index} className="flex gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-primary text-[16px] shrink-0 mt-0.5">
                     pill
                   </span>
                   <div className="min-w-0">
@@ -162,7 +162,7 @@ const AiResponseCard = ({ data, waktu }) => {
         {/* 4. Peringatan Darurat */}
         {peringatan && (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-3 flex gap-2">
-            <span className="material-symbols-outlined text-red-600 text-[20px] shrink-0">
+            <span className="material-symbols-outlined text-red-600 text-[18px] shrink-0">
               warning
             </span>
             <div className="min-w-0">
@@ -178,7 +178,7 @@ const AiResponseCard = ({ data, waktu }) => {
 
         {/* 5. Disclaimer wajib */}
         <section className="flex gap-2 border-t border-border-subtle pt-3">
-          <span className="material-symbols-outlined text-text-soft text-[16px] shrink-0">
+          <span className="material-symbols-outlined text-text-soft text-[14px] shrink-0">
             info
           </span>
           <p className="text-[11px] italic leading-relaxed text-text-soft">

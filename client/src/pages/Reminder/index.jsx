@@ -13,6 +13,7 @@ import {
   requestNotificationPermission as requestPermissionHelper,
   checkDueReminders,
 } from "../../services/reminderScheduler";
+import { aktifkanPush } from "../../services/pushService";
 
 // Daftar kategori pengingat kesehatan kerja (ikon Material Symbols)
 const CATEGORIES = [
@@ -117,6 +118,9 @@ export default function ReminderPage() {
   // 1. Memuat data pengingat dari API saat komponen dimuat
   useEffect(() => {
     fetchReminders();
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      aktifkanPush();
+    }
   }, []);
 
   // 2. Scheduler Waktu Nyata (Pengecekan otomatis setiap 15 detik)
@@ -137,6 +141,20 @@ export default function ReminderPage() {
 
     return () => clearInterval(timer);
   }, [reminders]);
+
+  // 3. Umpan balik saat alarm berbunyi dari scheduler global (Layout),
+  //    sehingga pesan sukses tetap muncul walau halaman ini tidak memicunya.
+  useEffect(() => {
+    const saatAlarm = (e) => {
+      const reminder = e.detail;
+      if (!reminder) return;
+      setLastTriggeredReminder(reminder);
+      setSuccessMessage(`Alarm berbunyi: ${reminder.title}`);
+      setTimeout(() => setSuccessMessage(""), 8000);
+    };
+    window.addEventListener("vitara:reminder", saatAlarm);
+    return () => window.removeEventListener("vitara:reminder", saatAlarm);
+  }, []);
 
   const fetchReminders = async () => {
     try {
@@ -268,7 +286,12 @@ export default function ReminderPage() {
       sendWebNotification("VITARA: Notifikasi berhasil diaktifkan", {
         body: "Pengingat istirahat dan hidrasi Anda kini aktif di browser ini.",
       });
-      setSuccessMessage("Izin notifikasi diberikan. Notifikasi pengingat otomatis aktif.");
+      const pushAktif = await aktifkanPush();
+      setSuccessMessage(
+        pushAktif
+          ? "Izin notifikasi diberikan. Pengingat aktif walau tab ditutup."
+          : "Izin notifikasi diberikan. Pengingat aktif saat tab terbuka."
+      );
       setTimeout(() => setSuccessMessage(""), 4000);
     } else if (res === "denied") {
       alert(

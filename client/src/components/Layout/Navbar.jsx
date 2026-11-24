@@ -10,6 +10,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { NAV_ITEMS } from "./navConfig";
+import api from "../../services/api";
 
 /** Halaman dengan hero band gelap (header putih di atas pine). */
 const HALAMAN_GELAP = ["/dashboard", "/logger", "/chat", "/finder", "/profile", "/reminder"];
@@ -64,6 +65,16 @@ export const Navbar = () => {
     setShowDropdown(false);
   }, [location.pathname]);
 
+  // Tutup dropdown saat mengeklik di luar menu profil.
+  useEffect(() => {
+    if (!showDropdown) return;
+    const tutup = (e) => {
+      if (!e.target.closest("[data-menu-profil]")) setShowDropdown(false);
+    };
+    document.addEventListener("mousedown", tutup);
+    return () => document.removeEventListener("mousedown", tutup);
+  }, [showDropdown]);
+
   let user = null;
   try {
     const stored = localStorage.getItem("user");
@@ -83,9 +94,14 @@ export const Navbar = () => {
       .toUpperCase();
   }, [user?.name]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } catch {
+      // Tetap bersihkan cache lokal bila server sedang tidak merespons.
+    }
     localStorage.removeItem("user");
+    window.dispatchEvent(new Event("vitara-user-changed"));
     setShowDropdown(false);
     navigate("/login");
   };
@@ -161,7 +177,7 @@ export const Navbar = () => {
   );
 
   const profilPill = user ? (
-    <div className="relative">
+    <div className="relative" data-menu-profil>
       <button
         type="button"
         onClick={() => setShowDropdown((prev) => !prev)}
@@ -222,7 +238,7 @@ export const Navbar = () => {
   // Mobile: avatar + nama depan di sampingnya + dropdown yang sama dengan Desktop.
   const namaDepan = user?.name ? user.name.trim().split(" ")[0] : "";
   const profilMobile = user ? (
-    <div className="relative">
+    <div className="relative" data-menu-profil>
       <button
         type="button"
         onClick={() => setShowDropdown((prev) => !prev)}

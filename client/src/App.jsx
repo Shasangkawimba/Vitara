@@ -5,87 +5,31 @@
 // (P1, P2, P4) membuat halaman di folder masing-masing, kemudian P3
 // akan menghubungkan import komponen halaman tersebut ke file App.jsx ini.
 // ============================================================
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { Routes, Route, Link } from "react-router-dom";
 import Layout from "./components/Layout";
 import LandingPage from "./pages/Landing";
-import DashboardPage from "./pages/Dashboard";
-import ReminderPage from "./pages/Reminder";
-import FinderPage from "./pages/Finder";
 import AuthPage from "./pages/Auth";
+import OAuthCallback from "./pages/Auth/OAuthCallback";
+import ForgotPassword from "./pages/Auth/ForgotPassword";
+import ResetPassword from "./pages/Auth/ResetPassword";
 import Logger from "./pages/Logger";
-import ChatPage from "./pages/Chat";
-import ProfilePage from "./pages/Profile";
 
-/**
- * Komponen Placeholder Standar
- * Digunakan sementara sebelum modul halaman resmi diintegrasikan oleh masing-masing pemilik rute.
- */
-const PlaceholderPage = ({ nama, pemilik, deskripsi, tagWarna = "emerald" }) => {
-  return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center shadow-xs">
-      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary mb-4 font-bold text-2xl">
-        {pemilik.substring(0, 2)}
-      </div>
-      <span className="mb-2 inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-xs font-semibold text-text-muted">
-        Tanggung Jawab: {pemilik}
-      </span>
-      <h2 className="text-2xl font-bold tracking-tight text-slate-800">
-        {nama}
-      </h2>
-      <p className="mt-2 max-w-md text-sm text-slate-500">
-        {deskripsi || "Modul ini sedang dalam tahap pengembangan (Minggu 1)."}
-      </p>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <Link
-          to="/dashboard"
-          className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-dark transition"
-        >
-          Kembali ke Dashboard
-        </Link>
-      </div>
-    </div>
-  );
-};
+// Halaman berat dimuat saat rute dibuka agar bundle awal lebih ringan.
+const DashboardPage = lazy(() => import("./pages/Dashboard"));
+const ReminderPage = lazy(() => import("./pages/Reminder"));
+const FinderPage = lazy(() => import("./pages/Finder"));
+const ChatPage = lazy(() => import("./pages/Chat"));
+const ProfilePage = lazy(() => import("./pages/Profile"));
 
-/**
- * Komponen Halaman Login Mandiri (Tanpa Shell Layout)
- * Dikelola oleh P1 (Auth)
- */
-const LoginPlaceholder = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white font-extrabold text-xl">
-            V
-          </div>
-          <h1 className="mt-4 text-2xl font-bold text-slate-800">
-            Masuk ke VITARA
-          </h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Halaman Login & Registrasi Akun (Tanggung Jawab P1)
-          </p>
-        </div>
-
-        <div className="mt-6 rounded-xl bg-slate-50 p-4 text-center border border-slate-200">
-          <p className="text-xs text-slate-600 font-medium">
-            Form autentikasi P1 akan dipasang di sini.
-          </p>
-        </div>
-
-        <div className="mt-6 text-center">
-          <Link
-            to="/dashboard"
-            className="inline-block w-full rounded-full bg-primary py-2.5 text-center text-sm font-semibold text-white hover:bg-primary-dark transition"
-          >
-            Masuk Langsung ke Dashboard Demo
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
+const MuatHalaman = () => (
+  <div className="flex min-h-[60vh] items-center justify-center gap-2">
+    <span className="material-symbols-outlined animate-spin text-primary">
+      progress_activity
+    </span>
+    <span className="text-sm text-text-muted">Memuat halaman...</span>
+  </div>
+);
 
 /**
  * Komponen Halaman 404 Not Found
@@ -112,38 +56,43 @@ const NotFoundPage = () => {
 
 function App() {
   return (
-    <Routes>
-      {/* 1. Halaman Publik / Auth / Landing (Tanpa Layout Shell) */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<AuthPage initialMode="login" />} />
-      <Route path="/register" element={<AuthPage initialMode="register" />} />
+    <Suspense fallback={<MuatHalaman />}>
+      <Routes>
+        {/* 1. Halaman Publik / Auth / Landing (Tanpa Layout Shell) */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<AuthPage initialMode="login" />} />
+        <Route path="/register" element={<AuthPage initialMode="register" />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
+        <Route path="/lupa-sandi" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* 2. Halaman Internal Aplikasi (Dibungkus Layout Shell: Navbar & Sidebar) */}
-      <Route element={<Layout />}>
-        {/* Rute Awal ditangani oleh LandingPage di atas */}
+        {/* 2. Halaman Internal Aplikasi (Dibungkus Layout Shell: Navbar & Sidebar) */}
+        <Route element={<Layout />}>
+          {/* Rute Awal ditangani oleh LandingPage di atas */}
 
-        {/* Rute Dashboard - Tanggung Jawab P3 */}
-        <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Rute Dashboard - Tanggung Jawab P3 */}
+          <Route path="/dashboard" element={<DashboardPage />} />
 
-        {/* Rute Catatan Harian (Logger) - Tanggung Jawab P1 */}
-        <Route path="/logger" element={<Logger />} />
+          {/* Rute Catatan Harian (Logger) - Tanggung Jawab P1 */}
+          <Route path="/logger" element={<Logger />} />
 
-        {/* Rute Ergo-Coach AI (Chat) - Tanggung Jawab P2 */}
-        <Route path="/chat" element={<ChatPage />} />
+          {/* Rute Ergo-Coach AI (Chat) - Tanggung Jawab P2 */}
+          <Route path="/chat" element={<ChatPage />} />
 
-        {/* Rute Finder Fasilitas Kesehatan - Tanggung Jawab P4 */}
-        <Route path="/finder" element={<FinderPage />} />
+          {/* Rute Finder Fasilitas Kesehatan - Tanggung Jawab P4 */}
+          <Route path="/finder" element={<FinderPage />} />
 
-        {/* Rute Pengingat (Reminder) - Tanggung Jawab P4 */}
-        <Route path="/reminder" element={<ReminderPage />} />
+          {/* Rute Pengingat (Reminder) - Tanggung Jawab P4 */}
+          <Route path="/reminder" element={<ReminderPage />} />
 
-        {/* Rute Profil Pengguna - milik bersama, mengikuti shell P3 */}
-        <Route path="/profile" element={<ProfilePage />} />
+          {/* Rute Profil Pengguna - milik bersama, mengikuti shell P3 */}
+          <Route path="/profile" element={<ProfilePage />} />
 
-        {/* Catch-all 404 di dalam layout */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
+          {/* Catch-all 404 di dalam layout */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 

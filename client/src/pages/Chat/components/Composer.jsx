@@ -105,7 +105,7 @@ const Composer = ({ nilai, onChange, onSend, loading }) => {
 
   return (
     <div>
-      <div className="flex items-end gap-1 rounded-[26px] border border-border-subtle bg-surface-subtle p-1.5 pl-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all focus-within:border-accent-mint/45 focus-within:bg-surface-card">
+      <div className="flex items-end gap-1 rounded-[24px] border border-border-subtle bg-surface-subtle p-1 pl-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all focus-within:border-accent-mint/45 focus-within:bg-surface-card">
         <button
           type="button"
           title="Lampirkan foto (segera hadir)"
@@ -123,11 +123,9 @@ const Composer = ({ nilai, onChange, onSend, loading }) => {
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            mencatat
-              ? "Mendengarkan suara Anda… bicara sekarang"
-              : "Tanya keluhan fisik atau panduan…"
+            mencatat ? "Mendengarkan suara…" : "Tanya keluhan fisik…"
           }
-          className={`max-h-[120px] min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-5 text-text-primary placeholder:text-text-muted focus:outline-none ${
+          className={`max-h-[120px] min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-sm leading-5 text-text-primary placeholder:text-text-muted focus:outline-none ${
             micError ? "placeholder:text-red-500" : ""
           }`}
           maxLength={1000}
@@ -165,7 +163,7 @@ const Composer = ({ nilai, onChange, onSend, loading }) => {
           onClick={onSend}
           disabled={!bisaKirim}
           aria-label="Kirim pesan"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-xs transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-xs transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? (
             <span className="material-symbols-outlined animate-spin text-[19px]">

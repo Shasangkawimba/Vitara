@@ -18,6 +18,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import api from "../../services/api";
+import Skeleton from "../../components/Skeleton";
 
 // Lokasi default (Pusat Jakarta / Monas) jika GPS belum diizinkan
 const DEFAULT_CENTER = [-6.175392, 106.827153];
@@ -52,13 +53,15 @@ const pharmacyIcon = L.divIcon({
 });
 
 // Helper component untuk mengatur ulang sudut pandang peta saat posisi berubah
-function ChangeMapView({ coords }) {
+function ChangeMapView({ coords, radius }) {
   const map = useMap();
   useEffect(() => {
     if (coords) {
-      map.flyTo(coords, 14, { duration: 1.5 });
+      // Radius lebih luas butuh zoom lebih jauh agar lingkaran tetap terlihat.
+      const zoom = radius >= 10000 ? 12 : radius >= 5000 ? 13 : 14;
+      map.flyTo(coords, zoom, { duration: 1.5 });
     }
-  }, [coords, map]);
+  }, [coords, radius, map]);
   return null;
 }
 
@@ -84,6 +87,7 @@ export default function FinderPage() {
   const [userLocation, setUserLocation] = useState(null);
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
   const [pharmacies, setPharmacies] = useState([]);
+  const [radiusAktif, setRadiusAktif] = useState(SEARCH_RADIUS_METERS);
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -146,8 +150,9 @@ export default function FinderPage() {
       );
       if (response.data && response.data.success) {
         setPharmacies(response.data.data || []);
+        setRadiusAktif(response.data.meta?.radius || SEARCH_RADIUS_METERS);
       } else {
-        setErrorMessage("Tidak ada apotek yang ditemukan di sekitar radius 3 km.");
+        setErrorMessage("Tidak ada apotek yang ditemukan di sekitar lokasi Anda.");
       }
     } catch (err) {
       console.error("Gagal mengambil data apotek:", err);
@@ -212,6 +217,8 @@ export default function FinderPage() {
     filteredPharmacies[0] ||
     null;
 
+  const labelRadius = `${Math.round(radiusAktif / 1000)} km`;
+
   return (
     <div className="w-full">
       {/* Kepala halaman + pencarian */}
@@ -225,8 +232,8 @@ export default function FinderPage() {
               Faskes &amp; Apotek
             </h1>
             <p className="mt-1 max-w-lg text-sm text-white/70 font-body">
-              Jaringan apotek dalam radius 3 km dari posisi Anda, terhubung langsung
-              ke peta OpenStreetMap.
+              Jaringan apotek dalam radius {labelRadius} dari posisi Anda, terhubung
+              langsung ke peta OpenStreetMap.
             </p>
           </div>
 
@@ -324,7 +331,7 @@ export default function FinderPage() {
                 className="h-full w-full"
                 style={{ minHeight: "100%" }}
               >
-                <ChangeMapView coords={mapCenter} />
+                <ChangeMapView coords={mapCenter} radius={radiusAktif} />
 
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -340,14 +347,14 @@ export default function FinderPage() {
                             Lokasi Anda
                           </strong>
                           <span className="text-xs text-text-muted">
-                            Pusat pencarian radius 3 km
+                            Pusat pencarian radius {labelRadius}
                           </span>
                         </div>
                       </Popup>
                     </Marker>
                     <Circle
                       center={userLocation}
-                      radius={SEARCH_RADIUS_METERS}
+                      radius={radiusAktif}
                       pathOptions={{
                         color: "#183b38",
                         fillColor: "#54a195",
@@ -442,7 +449,7 @@ export default function FinderPage() {
                 {gpsLoading
                   ? "Mendeteksi GPS…"
                   : userLocation
-                  ? "GPS aktif · radius 3 km"
+                  ? `GPS aktif · radius ${labelRadius}`
                   : "Lokasi default (Jakarta)"}
               </div>
             </div>
@@ -454,9 +461,9 @@ export default function FinderPage() {
             <section className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-6">
               {loading ? (
                 <div className="space-y-3">
-                  <div className="h-5 w-2/3 animate-pulse rounded-lg bg-surface-subtle" />
-                  <div className="h-3.5 w-full animate-pulse rounded-md bg-surface-subtle" />
-                  <div className="h-20 w-full animate-pulse rounded-2xl bg-surface-subtle" />
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-3.5 w-full" />
+                  <Skeleton className="h-20 w-full rounded-2xl" />
                 </div>
               ) : detail ? (
                 <>
@@ -562,7 +569,7 @@ export default function FinderPage() {
                   </p>
                   <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-text-muted">
                     Aktifkan izin lokasi lalu muat ulang data untuk mencari apotek
-                    dalam radius 3 km.
+                    dalam radius {labelRadius}.
                   </p>
                   <button
                     type="button"

@@ -94,8 +94,6 @@ export default function Logger() {
 
   const fetchLogs = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
       const res = await api.get("/api/logs");
       if (res.data?.success) {
         const logs = res.data.data || [];
@@ -476,9 +474,11 @@ export default function Logger() {
         )}
 
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
-          {/* KIRI: timeline, status hari ini, riwayat sesi (urut sesuai DOM). */}
-          <div className="flex flex-col gap-5 lg:col-span-5 lg:gap-6">
-            <section className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-6">
+          {/* KIRI: timeline, status hari ini, riwayat sesi (urut sesuai DOM).
+              Di mobile wrapper ini "contents" agar keempat section menjadi
+              item grid dan bisa diurutkan: timeline, status, form, sesi. */}
+          <div className="contents lg:col-span-5 lg:flex lg:flex-col lg:gap-6">
+            <section className="order-1 rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:order-none lg:p-6">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[17px] font-bold tracking-tight text-text-primary">
                   Timeline
@@ -800,10 +800,10 @@ export default function Logger() {
           </div>
 
           {/* KANAN: form catatan hari ini */}
-          <div className="lg:col-span-7">
+          <div className="contents lg:col-span-7 lg:block">
             <form
               onSubmit={handleSaveLog}
-              className="rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:p-7"
+              className="order-3 rounded-4xl border border-border-subtle bg-surface-card p-5 shadow-card lg:order-none lg:p-7"
             >
               <div className="mb-5 flex items-start justify-between gap-3">
                 <div>

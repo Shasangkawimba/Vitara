@@ -4,8 +4,9 @@
 // Dikelola oleh P1 (Auth & Logger).
 // ============================================================
 import React, { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import GoogleButton from "./GoogleButton";
 
 export default function Login({ onSwitchToRegister }) {
   const navigate = useNavigate();
@@ -55,10 +56,10 @@ export default function Login({ onSwitchToRegister }) {
       });
 
       if (response.data?.success) {
-        const { token, user } = response.data.data;
-        // Simpan token JWT sesuai kontrak services/api.js
-        localStorage.setItem("token", token);
+        const { user } = response.data.data;
+        // JWT kini berupa cookie httpOnly. Cache profil hanya untuk UI.
         localStorage.setItem("user", JSON.stringify(user));
+        window.dispatchEvent(new Event("vitara-user-changed"));
 
         // Navigasi ke halaman Logger
         navigate("/logger");
@@ -101,7 +102,8 @@ export default function Login({ onSwitchToRegister }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      {/* autoComplete dimatikan: dropdown simpanan browser menutupi field di bawahnya. */}
+      <form onSubmit={handleSubmit} className="space-y-3.5" autoComplete="off">
         {/* Input Username */}
         <div>
           <label
@@ -121,7 +123,7 @@ export default function Login({ onSwitchToRegister }) {
               value={formData.username}
               onChange={handleChange}
               placeholder="Contoh: budi_santoso"
-              autoComplete="username"
+              autoComplete="off"
               required
               className="w-full bg-transparent py-3 sm:py-2.5 pl-11 pr-4 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
             />
@@ -147,7 +149,7 @@ export default function Login({ onSwitchToRegister }) {
               value={formData.password}
               onChange={handleChange}
               placeholder="Masukkan kata sandi"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               ref={passwordRef}
               className="w-full bg-transparent py-3 sm:py-2.5 pl-11 pr-11 text-sm text-text-primary placeholder:text-text-muted/70 focus:outline-none"
@@ -164,6 +166,15 @@ export default function Login({ onSwitchToRegister }) {
               </span>
             </button>
           </div>
+        </div>
+
+        <div className="text-right">
+          <Link
+            to="/lupa-sandi"
+            className="text-[12px] font-semibold text-primary hover:underline"
+          >
+            Lupa kata sandi?
+          </Link>
         </div>
 
         {/* Tombol Submit */}
@@ -187,6 +198,15 @@ export default function Login({ onSwitchToRegister }) {
           )}
         </button>
       </form>
+
+      {/* CTA Google di bawah form */}
+      <div className="my-4 flex items-center gap-3 text-[11px] uppercase tracking-wide text-text-muted">
+        <span className="h-px flex-1 bg-border-subtle" />
+        atau
+        <span className="h-px flex-1 bg-border-subtle" />
+      </div>
+
+      <GoogleButton label="Masuk dengan Google" />
 
       {/* Switcher */}
       <div className="mt-6 border-t border-border-subtle pt-5 text-center">
