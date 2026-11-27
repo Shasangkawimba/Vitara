@@ -6,11 +6,11 @@
 // ============================================================
 import React from "react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
-
+// Tautan relatif: dev lewat proxy Vite, produksi lewat rewrite Vercel,
+// sehingga cookie sesi OAuth tetap first-party.
 const GoogleButton = ({ label = "Masuk dengan Google" }) => (
   <a
-    href={`${API_BASE}/api/auth/oauth/google/start`}
+    href="/api/auth/oauth/google/start"
     className="flex h-11 w-full items-center justify-center gap-2.5 rounded-full border border-border-subtle bg-surface-card text-[13px] font-semibold text-text-primary transition-colors hover:border-primary hover:text-primary"
   >
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

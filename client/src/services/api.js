@@ -8,9 +8,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  // Saat dev, biarkan kosong → request lewat proxy Vite (/api → localhost:5001).
-  // Saat production, /api di-rewrite Vercel ke Railway (same-origin).
-  baseURL: import.meta.env.VITE_API_URL || "",
+  // Selalu same-origin: dev lewat proxy Vite (/api → localhost:5001),
+  // produksi lewat rewrite Vercel (/api → Railway). VITE_API_URL ke Railway
+  // akan membuat request cross-origin yang diblokir CSP connect-src 'self'
+  // dan cookie sesi menjadi third-party, jadi sengaja tidak dipakai.
+  baseURL: "",
   timeout: 15000,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
@@ -30,7 +32,7 @@ function bacaCsrf() {
 async function pastikanCsrf() {
   let token = bacaCsrf();
   if (token) return token;
-  await fetch(`${import.meta.env.VITE_API_URL || ""}/api/auth/csrf`, {
+  await fetch("/api/auth/csrf", {
     credentials: "include",
     cache: "no-store",
   });
